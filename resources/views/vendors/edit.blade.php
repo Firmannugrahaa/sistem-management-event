@@ -20,25 +20,25 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="mb-4">
                 <x-input-label for="name" :value="__('Nama Vendor')" />
-                <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name', $vendor->name)" required autofocus />
+                <x-text-input id="name" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="name" :value="old('name', $vendor->name)" required autofocus />
               </div>
               <div class="mb-4">
                 <x-input-label for="category" :value="__('Kategori (Cth: Katering, Dekorasi)')" />
-                <x-text-input id="category" class="block mt-1 w-full" type="text" name="category" :value="old('category', $vendor->category)" required />
+                <x-text-input id="category" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="category" :value="old('category', $vendor->category)" required />
               </div>
               <div class="mb-4">
                 <x-input-label for="contact_person" :value="__('Nama Kontak Person')" />
-                <x-text-input id="contact_person" class="block mt-1 w-full" type="text" name="contact_person" :value="old('contact_person', $vendor->contact_person)" required />
+                <x-text-input id="contact_person" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="contact_person" :value="old('contact_person', $vendor->contact_person)" required />
               </div>
               <div class="mb-4">
                 <x-input-label for="phone_number" :value="__('No. Telepon / WA')" />
-                <x-text-input id="phone_number" class="block mt-1 w-full" type="text" name="phone_number" :value="old('phone_number', $vendor->phone_number)" required />
+                <x-text-input id="phone_number" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="phone_number" :value="old('phone_number', $vendor->phone_number)" required />
               </div>
             </div>
 
             <div class="mb-4">
               <x-input-label for="address" :value="__('Alamat')" />
-              <textarea id="address" name="address" rows="3" class="block mt-1 w-full border-gray-300 ... rounded-md shadow-sm">{{ old('address', $vendor->address) }}</textarea>
+              <textarea id="address" name="address" rows="3" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">{{ old('address', $vendor->address) }}</textarea>
             </div>
 
             <x-primary-button type="submit">

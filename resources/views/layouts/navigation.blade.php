@@ -47,6 +47,7 @@
                     </svg>
                     <span class="text-sm font-medium" x-show="open" x-transition>Venue</span>
                 </a>
+                
                 <!-- Event -->
                 <a href="{{ route('events.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">

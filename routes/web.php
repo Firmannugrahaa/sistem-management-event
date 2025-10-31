@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\GuestController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\VendorController;
@@ -35,6 +37,24 @@ Route::middleware('auth')->group(function () {
     Route::delete('/events/{event}/vendors/{vendor}', [EventController::class, 'detachVendor'])
         ->name('events.detachVendor');
     Route::resource('vendors', VendorController::class);
+
+    // --- INVOICE & PAYMENT ROUTES ---
+
+    // 1. Route untuk trigger generate/update invoice
+    Route::post('events/{event}/generate-invoice', [EventController::class, 'generateInvoice'])
+        ->name('events.generateInvoice');
+
+    // 2. Route untuk menampilkan halaman invoice
+    Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])
+        ->name('invoice.show');
+
+    // 3. Route untuk menyimpan catatan pembayaran baru
+    Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])
+        ->name('payments.store');
+
+    // 4. Route untuk menghapus catatan pembayaran
+    Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])
+        ->name('payments.destroy');
 });
 Route::get('tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
 

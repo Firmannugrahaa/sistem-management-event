@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\Invoice;
 use App\Models\Vendor;
 use App\Models\Venue;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class EventController extends Controller
 {
@@ -119,5 +121,33 @@ class EventController extends Controller
         $event->vendors()->detach($vendor->id);
 
         return back()->with('success', 'Vendor berhasil dihapus dari event.');
+    }
+    public function generateInvoice(Event $event)
+    {
+        // 1. Hitung total biaya dari pivot table vendor
+        // Kita panggil relasi vendors() dan SUM 'agreed_price'
+        $totalAmount = $event->vendors()->sum('agreed_price');
+
+        // 2. Data untuk Invoice
+        $invoiceData = [
+            'total_amount' => $totalAmount,
+            'status' => 'Unpaid' // Set status jadi Unpaid
+        ];
+
+        // 3. Cek apakah event ini SUDAH punya invoice?
+        if ($event->invoice) {
+            // Jika sudah, update saja
+            $event->invoice->update($invoiceData);
+        } else {
+            // Jika belum, buat baru
+            $invoiceData['event_id'] = $event->id;
+            $invoiceData['invoice_number'] = 'INV-' . $event->id . '-' . strtoupper(Str::random(4));
+            $invoiceData['issue_date'] = now();
+            $invoiceData['due_date'] = $event->start_time; // Jatuh tempo = tgl event
+
+            Invoice::create($invoiceData);
+        }
+
+        return back()->with('success', 'Invoice berhasil di-generate/diperbarui.');
     }
 }
