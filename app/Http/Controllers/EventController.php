@@ -130,7 +130,7 @@ class EventController extends Controller
 
         // 2. Data untuk Invoice
         $invoiceData = [
-            'total_amount' => $totalAmount,
+            'total_amount' => $totalAmount, //
             'status' => 'Unpaid' // Set status jadi Unpaid
         ];
 

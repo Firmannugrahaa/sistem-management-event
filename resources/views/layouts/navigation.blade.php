@@ -47,7 +47,7 @@
                     </svg>
                     <span class="text-sm font-medium" x-show="open" x-transition>Venue</span>
                 </a>
-                
+
                 <!-- Event -->
                 <a href="{{ route('events.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
@@ -76,6 +76,16 @@
                         <path d="M3 4h8" />
                     </svg>
                     <span class="text-sm font-medium" x-show="open" x-transition>Vendors</span>
+                </a>
+                <a href="{{ route('vouchers.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 
+            {{ request()->routeIs('vouchers.*') ? 'bg-slate-700' : '' }}">
+
+                    <svg classs="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5h14a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 000-4V7a2 2 0 012-2h14z" />
+                    </svg>
+
+                    <span class="text-sm font-medium" x-show="open" x-transition>Voucher</span>
                 </a>
             </div>
         </div>

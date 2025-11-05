@@ -26,7 +26,7 @@
             @csrf
             <div class="mb-4">
               <x-input-label for="event_name" :value="__('Nama Event')" />
-              <x-text-input id="event_name" class="block mt-1 w-full" type="text" name="event_name" :value="old('event_name')" required autofocus />
+              <x-text-input id="event_name" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="event_name" :value="old('event_name')" required autofocus />
             </div>
 
             {{-- DROPDOWN VENUE --}}
@@ -45,11 +45,11 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <x-input-label for="start_time" :value="__('Waktu Mulai')" />
-                <x-text-input id="start_time" class="block mt-1 w-full" type="datetime-local" name="start_time" :value="old('start_time')" required />
+                <x-text-input id="start_time" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="datetime-local" name="start_time" :value="old('start_time')" required />
               </div>
               <div>
                 <x-input-label for="end_time" :value="__('Waktu Selesai')" />
-                <x-text-input id="end_time" class="block mt-1 w-full" type="datetime-local" name="end_time" :value="old('end_time')" required />
+                <x-text-input id="end_time" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="datetime-local" name="end_time" :value="old('end_time')" required />
               </div>
             </div>
 

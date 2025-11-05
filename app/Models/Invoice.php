@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Attribute;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +19,8 @@ class Invoice extends Model
         'due_date',
         'total_amount',
         'status',
+        'voucher_id',
+        'discount_amount',
     ];
     /**
      * Relasi: Invoice ini milik Event mana
@@ -36,6 +38,11 @@ class Invoice extends Model
         return $this->hasMany(Payment::class);
     }
 
+    protected function voucher(): BelongsTo
+    {
+        return $this->belongsTo(Voucher::class);
+    }
+
     // --- ACCESSOR (FUNGSI AJAIB) ---
 
     /**
@@ -49,6 +56,13 @@ class Invoice extends Model
         );
     }
 
+    protected function finalAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->total_amount - $this->discount_amount
+        );
+    }
+
     /**
      * Accessor: Menghitung otomatis SISA TAGIHAN
      * Cara panggil: $invoice->balance_due
@@ -56,7 +70,7 @@ class Invoice extends Model
     protected function balanceDue(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->total_amount - $this->paid_amount
+            get: fn() => $this->final_amount - $this->paid_amount
         );
     }
 }

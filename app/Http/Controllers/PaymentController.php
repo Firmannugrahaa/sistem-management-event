@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use App\Models\Payment;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
@@ -13,20 +14,38 @@ class PaymentController extends Controller
      */
     public function store(Request $request, Invoice $invoice)
     {
+        $balanceDue = $invoice->balance_due;
+
+        if ($balanceDue <= 0) {
+            return back()->with('error', ' Tagihan sudah lunas, Tidak bisa mencatat pembayaran');
+        }
+
+
         $validated = $request->validate([
             'payment_date' => 'required|date',
-            'amount' => 'required|numeric|min:1',
+            'amount' => [
+                'required',
+                'numeric',
+                'min:0.01',
+                // INI ADALAH PERBAIKANNYA:
+                'max:' . $balanceDue
+            ],
             'payment_method' => 'required|string',
             'notes' => 'nullable|string',
+        ], [
+            'amount.max' => 'Jumlah pembayaran tidak boleh melebihi sisa tagihan (Rp ' . number_format($balanceDue, 0, ',', '.') . ').'
         ]);
 
         // Tambahkan invoice_id
         $validated['invoice_id'] = $invoice->id;
-
+        $validated['status'] = 'Verified';
         Payment::create($validated);
 
         // Update status invoice (logika sederhana)
-        $invoice->load('payments'); // Refresh relasi
+        $newBalance = $invoice->refresh()->balance_due; // Refresh relasi
+
+        $invoice->load('payments');
+
         if ($invoice->balance_due <= 0) {
             $invoice->update(['status' => 'Paid']);
         } else {

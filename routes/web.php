@@ -8,6 +8,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\VenueController;
+use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -55,6 +56,12 @@ Route::middleware('auth')->group(function () {
     // 4. Route untuk menghapus catatan pembayaran
     Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])
         ->name('payments.destroy');
+
+    //5. Route untuk voucher
+    Route::resource('vouchers', VoucherController::class);
+    //6. Route untuk apply voucher
+    Route::post('invoices/{invoice}/apply-voucher', [InvoiceController::class, 'applyVoucher'])
+        ->name('invoice.applyVoucher');
 });
 Route::get('tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
 

@@ -12,10 +12,14 @@
       <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
         <div class="p-6 text-gray-900 dark:text-gray-100">
           <h3 class="text-lg font-bold mb-4">Ringkasan Tagihan</h3>
-          <div class="grid grid-cols-3 gap-4">
+          <div class="grid grid-cols-4 gap-4">
             <div>
-              <p class="text-sm text-gray-500">Total Tagihan</p>
+              <p class="text-sm text-gray-500">Total Tagihan Awal</p>
               <p class="text-2xl font-bold">Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Diskon (Voucher)</p>
+              <p class="text-2xl font-bold text-yellow-500">- Rp {{ number_format($invoice->discount_amount, 0, ',', '.') }}</p>
             </div>
             <div>
               <p class="text-sm text-gray-500">Telah Dibayar</p>
@@ -32,6 +36,39 @@
           <p><strong>Jatuh Tempo:</strong> {{ $invoice->due_date }}</p>
         </div>
       </div>
+      @if ($invoice->voucher_id)
+      {{-- Jika sudah ada voucher --}}
+      <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="p-6 text-gray-900 dark:text-gray-100">
+          <p class="text-green-600 font-medium">
+            Voucher <strong>{{ $invoice->voucher->code }}</strong> telah diterapkan.
+            (Diskon Rp {{ number_format($invoice->discount_amount, 0, ',', '.') }})
+          </p>
+        </div>
+      </div>
+      @else
+      {{-- Jika belum ada voucher --}}
+      <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="p-6 text-gray-900 dark:text-gray-100">
+          <h3 class="text-lg font-bold mb-4">Punya Kode Voucher?</h3>
+          <form action="{{ route('invoice.applyVoucher', $invoice) }}" method="POST">
+            @csrf
+            <div class="flex items-center gap-2">
+              <x-text-input id="voucher_code" class="block mt-1 w-full" type="text" name="voucher_code" placeholder="Masukkan kode..." required />
+              <x-primary-button type="submit">
+                Terapkan
+              </x-primary-button>
+            </div>
+            @if ($errors->has('voucher_code'))
+            <x-input-error :messages="$errors->get('voucher_code')" class="mt-2" />
+            @endif
+            @if (session('error'))
+            <p class="mt-2 text-sm text-red-600">{{ session('error') }}</p>
+            @endif
+          </form>
+        </div>
+      </div>
+      @endif
 
       {{-- 2. FORM CATAT PEMBAYARAN --}}
       <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">

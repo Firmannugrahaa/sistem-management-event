@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('invoice_id')->constrained()->onDelete('cascade');
             $table->date('payment_date');
             $table->decimal('amount', 15, 2); // jml yg dibayar
+            $table->string('payment_method')->default('Bank Transfer');
             $table->text('notes')->nullable();
             $table->string('proof_of_payment_path')->nullable(); //bisa upload bukti pembayaran
             $table->string('status')->default('Verified'); // Pending, verified, Rejected
