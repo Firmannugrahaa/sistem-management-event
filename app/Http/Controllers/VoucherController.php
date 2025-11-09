@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Voucher;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class VoucherController extends Controller
 {
+    use AuthorizesRequests;
     /**
      * Display a listing of the resource.
      */
@@ -22,6 +24,8 @@ class VoucherController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', Voucher::class);
+
         return view('vouchers.create');
     }
 
@@ -30,6 +34,8 @@ class VoucherController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Voucher::class);
+
         $validated = $request->validate([
             'code' => 'required|string|max:255|unique:vouchers,code',
             'type' => 'required|in:fixed,percentage',
@@ -57,6 +63,8 @@ class VoucherController extends Controller
      */
     public function edit(Voucher $voucher)
     {
+        $this->authorize('update', $voucher);
+
         return view('vouchers.edit', compact('voucher'));
     }
 
@@ -65,6 +73,8 @@ class VoucherController extends Controller
      */
     public function update(Request $request, Voucher $voucher)
     {
+        $this->authorize('update', $voucher);
+
         $validated = $request->validate([
             'code' => [
                 'required',
@@ -89,6 +99,8 @@ class VoucherController extends Controller
      */
     public function destroy(Voucher $voucher)
     {
+        $this->authorize('delete', $voucher);
+
         $voucher->delete();
         return redirect()->route('vouchers.index')->with('success', 'Voucher berhasil dihapus');
     }

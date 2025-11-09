@@ -17,8 +17,19 @@
 </head>
 
 <body class="font-sans antialiased">
-    <div class="min-h-screen bg-gray-100">
-        @include('layouts.navigation')
+    <!-- Fixed navigation sidebar -->
+    @include('layouts.navigation')
+    
+    <!-- Main content area that shifts based on sidebar -->
+    <div class="sm:ml-64">
+        <!-- SuperUser Alert Bar -->
+        @hasrole('SuperUser')
+        <div class="bg-red-600 text-white text-center py-2">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <p class="font-medium">SuperUser Access - You have global permissions</p>
+            </div>
+        </div>
+        @endhasrole
 
         <!-- Page Heading -->
         @isset($header)
@@ -30,8 +41,9 @@
         @endisset
 
         <!-- Page Content -->
-        <main class="min-h-screen bg-gray-100 dark:bg-gray-900">
-            {{ $slot }}
+        <main class="min-h-screen bg-gray-100 dark:bg-gray-900 pt-4">
+            {{ $slot ?? '' }}
+            @yield('content')
         </main>
     </div>
 </body>

@@ -23,5 +23,6 @@ class Vendor extends Model
     {
         return $this->belongsToMany(Event::class)
             ->withPivot('agreed_price', 'contract_details', 'status');
+            
     }
 }

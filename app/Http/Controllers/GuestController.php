@@ -5,20 +5,26 @@ namespace App\Http\Controllers;
 use App\Imports\GuestsImport;
 use App\Models\Event;
 use App\Models\Guest;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 
 class GuestController extends Controller
 {
+    use AuthorizesRequests;
 
     public function showImportForm(Event $event)
     {
+        $this->authorize('create', [Guest::class, $event]);
+
         return view('guests.import', compact('event'));
     }
 
     public function import(Request $request, Event $event)
     {
+        $this->authorize('create', [Guest::class, $event]);
+
         $request->validate([
             'guest_file' => 'required|mimes:xls,xlsx'
         ]);
@@ -46,6 +52,8 @@ class GuestController extends Controller
      */
     public function create(Event $event)
     {
+        $this->authorize('create', [Guest::class, $event]);
+
         return view('guests.create', compact('event'));
     }
 
@@ -54,6 +62,8 @@ class GuestController extends Controller
      */
     public function store(Event $event, Request $request,)
     {
+        $this->authorize('create', [Guest::class, $event]);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'whatsapp_number' => [
@@ -85,6 +95,12 @@ class GuestController extends Controller
      */
     public function edit(Event $event, Guest $guest)
     {
+        $this->authorize('update', $guest);
+
+        if ($guest->event_id !== $event->id) {
+            abort(404);
+        }
+
         return view('guests.edit', compact('event', 'guest'));
     }
 
@@ -93,6 +109,12 @@ class GuestController extends Controller
      */
     public function update(Request $request, Event $event, Guest $guest)
     {
+        $this->authorize('update', $guest);
+
+        if ($guest->event_id !== $event->id) {
+            abort(404);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'whatsapp_number' => [
@@ -115,6 +137,12 @@ class GuestController extends Controller
      */
     public function destroy(Event $event, Guest $guest)
     {
+        $this->authorize('delete', $guest);
+
+        if ($guest->event_id !== $event->id) {
+            abort(404);
+        }
+
         $guest->delete();
         return redirect()->route('events.show', $event)->with('success', 'Tamu berhasil dihapus.');
     }

@@ -4,16 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\Payment;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
+    use AuthorizesRequests;
     /**
      * Simpan catatan pembayaran baru
      */
     public function store(Request $request, Invoice $invoice)
     {
+        $this->authorize('create', [Payment::class, $invoice]);
+
+        $invoice->load('event');
+
         $balanceDue = $invoice->balance_due;
 
         if ($balanceDue <= 0) {
@@ -60,6 +66,10 @@ class PaymentController extends Controller
      */
     public function destroy(Payment $payment)
     {
+        $this->authorize('delete', $payment);
+
+        $payment->load('invoice.event');
+
         // Simpan invoice ID sebelum dihapus
         $invoice = $payment->invoice;
 

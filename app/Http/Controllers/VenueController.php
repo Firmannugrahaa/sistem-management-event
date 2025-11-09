@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Venue;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
 class VenueController extends Controller
 {
+    use AuthorizesRequests;
     /**
      * Display a listing of the resource.
      */
@@ -21,6 +23,8 @@ class VenueController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', Venue::class);
+
         return view('venues.create');
     }
 
@@ -29,6 +33,8 @@ class VenueController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Venue::class);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'required|string',
@@ -54,6 +60,8 @@ class VenueController extends Controller
      */
     public function edit(Venue $venue)
     {
+        $this->authorize('update', $venue);
+
         return view('venues.edit', compact('venue'));
     }
 
@@ -62,6 +70,8 @@ class VenueController extends Controller
      */
     public function update(Request $request, Venue $venue)
     {
+        $this->authorize('update', $venue);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'required|string',
@@ -79,6 +89,8 @@ class VenueController extends Controller
      */
     public function destroy(Venue $venue)
     {
+        $this->authorize('delete', $venue);
+
         $venue->delete();
 
         return redirect()->route('venues.index')->with('success', 'Venue berhasil dihapus');

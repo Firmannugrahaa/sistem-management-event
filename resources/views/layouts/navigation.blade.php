@@ -36,7 +36,22 @@
                     <span class="text-sm font-medium" x-show="open" x-transition>Dashboard</span>
                 </a>
 
+                <!-- My Team (for Owners) -->
+                @hasrole('Owner')
+                <a href="{{ route('team.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
+                    <svg class="w-6 h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span class="text-sm font-medium" x-show="open" x-transition>My Team</span>
+                </a>
+                @endhasrole
+
                 <!-- Venue -->
+                @hasrole('SuperUser')
                 <a href="{{ route('venues.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
                     <svg class="w-6 h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin-house-icon lucide-map-pin-house">
@@ -47,8 +62,23 @@
                     </svg>
                     <span class="text-sm font-medium" x-show="open" x-transition>Venue</span>
                 </a>
+                @else
+                @can('view_venues')
+                <a href="{{ route('venues.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
+                    <svg class="w-6 h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin-house-icon lucide-map-pin-house">
+                        <path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z" />
+                        <path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2" />
+                        <path d="M18 22v-3" />
+                        <circle cx="10" cy="10" r="3" />
+                    </svg>
+                    <span class="text-sm font-medium" x-show="open" x-transition>Venue</span>
+                </a>
+                @endcan
+                @endhasrole
 
                 <!-- Event -->
+                @hasrole('SuperUser')
                 <a href="{{ route('events.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
                     <svg class="w-6 h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-days-icon lucide-calendar-days">
@@ -65,7 +95,44 @@
                     </svg>
                     <span class="text-sm font-medium" x-show="open" x-transition>Event</span>
                 </a>
+                @else
+                @can('view_events')
+                <a href="{{ route('events.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
+                    <svg class="w-6 h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-days-icon lucide-calendar-days">
+                        <path d="M8 2v4" />
+                        <path d="M16 2v4" />
+                        <rect width="18" height="18" x="3" y="4" rx="2" />
+                        <path d="M3 10h18" />
+                        <path d="M8 14h.01" />
+                        <path d="M12 14h.01" />
+                        <path d="M16 14h.01" />
+                        <path d="M8 18h.01" />
+                        <path d="M12 18h.01" />
+                        <path d="M16 18h.01" />
+                    </svg>
+                    <span class="text-sm font-medium" x-show="open" x-transition>Event</span>
+                </a>
+                @endcan
+                @endhasrole
+
+                <!-- My Invoices (for regular users) -->
+                @unlessrole('SuperUser')
+                <a href="{{ route('invoices.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
+                    <svg class="w-6 h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text-icon lucide-file-text">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" x2="8" y1="13" y2="13" />
+                        <line x1="16" x2="8" y1="17" y2="17" />
+                        <line x1="10" x2="8" y1="9" y2="9" />
+                    </svg>
+                    <span class="text-sm font-medium" x-show="open" x-transition>My Invoices</span>
+                </a>
+                @endunlessrole
+
                 <!-- Vendors -->
+                @hasrole('SuperUser')
                 <a href="{{ route('vendors.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
                     <svg class="w-6 h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-handshake-icon lucide-handshake">
@@ -77,17 +144,136 @@
                     </svg>
                     <span class="text-sm font-medium" x-show="open" x-transition>Vendors</span>
                 </a>
+                @else
+                @can('view_vendors')
+                <a href="{{ route('vendors.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
+                    <svg class="w-6 h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-handshake-icon lucide-handshake">
+                        <path d="m11 17 2 2a1 1 0 1 0 3-3" />
+                        <path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" />
+                        <path d="m21 3 1 11h-2" />
+                        <path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" />
+                        <path d="M3 4h8" />
+                    </svg>
+                    <span class="text-sm font-medium" x-show="open" x-transition>Vendors</span>
+                </a>
+                @endcan
+                @endhasrole
+                @hasrole('SuperUser')
                 <a href="{{ route('vouchers.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 
-            {{ request()->routeIs('vouchers.*') ? 'bg-slate-700' : '' }}">
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700
+                {{ request()->routeIs('vouchers.*') ? 'bg-slate-700' : '' }}">
 
-                    <svg classs="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24">
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5h14a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 000-4V7a2 2 0 012-2h14z" />
                     </svg>
 
                     <span class="text-sm font-medium" x-show="open" x-transition>Voucher</span>
                 </a>
+                @else
+                @can('view_vouchers')
+                <a href="{{ route('vouchers.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700
+                {{ request()->routeIs('vouchers.*') ? 'bg-slate-700' : '' }}">
+
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5h14a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 000-4V7a2 2 0 012-2h14z" />
+                    </svg>
+
+                    <span class="text-sm font-medium" x-show="open" x-transition>Voucher</span>
+                </a>
+                @endcan
+                @endhasrole
+
+                <!-- Tickets -->
+                @hasrole('SuperUser')
+                <a href="{{ route('events.index') }}" {{-- Since tickets are event-specific, link to events which contain tickets --}}
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
+                    <svg class="w-6 h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ticket-icon lucide-ticket">
+                        <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+                        <path d="M13 5v2" />
+                        <path d="M13 17v2" />
+                        <path d="M13 11v2" />
+                    </svg>
+                    <span class="text-sm font-medium" x-show="open" x-transition>Tickets</span>
+                </a>
+                @else
+                @can('view_tickets')
+                <a href="{{ route('events.index') }}" {{-- Since tickets are event-specific, link to events which contain tickets --}}
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
+                    <svg class="w-6 h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ticket-icon lucide-ticket">
+                        <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+                        <path d="M13 5v2" />
+                        <path d="M13 17v2" />
+                        <path d="M13 11v2" />
+                    </svg>
+                    <span class="text-sm font-medium" x-show="open" x-transition>Tickets</span>
+                </a>
+                @endcan
+                @endhasrole
             </div>
+
+            <!-- SuperUser Menu - Only visible to SuperUsers -->
+            @hasrole('SuperUser')
+            <div class="border-t border-slate-700 pt-2 mt-2">
+                <a href="{{ route('superuser.dashboard.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500">
+                    <svg class="w-6 h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                        <line x1="16" x2="16" y1="2" y2="6"/>
+                        <line x1="8" x2="8" y1="2" y2="6"/>
+                        <line x1="3" x2="21" y1="10" y2="10"/>
+                        <path d="M10 16H8"/>
+                        <path d="M16 16H14"/>
+                        <path d="M10 12H8"/>
+                        <path d="M16 12H14"/>
+                    </svg>
+                    <span class="text-sm font-medium" x-show="open" x-transition>SuperUser Dashboard</span>
+                </a>
+
+                <a href="{{ route('superuser.users.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500 ml-4">
+                    <svg class="w-5 h-5 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span class="text-xs font-medium" x-show="open" x-transition>Manage Users</span>
+                </a>
+
+                <a href="{{ route('superuser.roles.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500 ml-4">
+                    <svg class="w-5 h-5 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span class="text-xs font-medium" x-show="open" x-transition>Manage Roles</span>
+                </a>
+
+                <a href="{{ route('superuser.invoices.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500 ml-4">
+                    <svg class="w-5 h-5 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text-icon lucide-file-text">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" x2="8" y1="13" y2="13" />
+                        <line x1="16" x2="8" y1="17" y2="17" />
+                        <line x1="10" x2="8" y1="9" y2="9" />
+                    </svg>
+                    <span class="text-xs font-medium" x-show="open" x-transition>Manage Invoices</span>
+                </a>
+
+                <a href="{{ route('superuser.permissions.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition duration-200 hover:bg-slate-700 active:bg-blue-500 ml-4">
+                    <svg class="w-5 h-5 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    <span class="text-xs font-medium" x-show="open" x-transition>Permissions Matrix</span>
+                </a>
+            </div>
+            @endhasrole
         </div>
 
         <!-- Profile Section -->
@@ -98,7 +284,11 @@
                 </div>
                 <!-- Sembunyikan teks profil saat sidebar kecil -->
                 <div class="flex-1 min-w-0" x-show="open" x-transition>
-                    <p class="text-sm font-medium truncate">{{ Auth::user()->name }}</p>
+                    <p class="text-sm font-medium truncate">{{ Auth::user()->name }}
+                        @hasrole('SuperUser')
+                        <span class="bg-red-500 text-white text-xs font-medium me-2 px-2.5 py-0.5 rounded">SuperUser</span>
+                        @endhasrole
+                    </p>
                     <p class="text-xs text-slate-400 truncate">{{ Auth::user()->email ?? 'user@example.com' }}</p>
                 </div>
             </div>
@@ -128,8 +318,3 @@
         </div>
     </div>
 </nav>
-
-<!-- Main content shift -->
-<div class="transition-all duration-300 ease-in-out" :class="open ? 'sm:ml-64' : 'sm:ml-20'">
-    <!-- Your page content goes here -->
-</div>

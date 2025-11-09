@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vendor;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
 class VendorController extends Controller
 {
+    use AuthorizesRequests;
     /**
      * Display a listing of the resource.
      */
@@ -21,6 +23,7 @@ class VendorController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', Vendor::class);
         return view('vendors.create');
     }
 
@@ -29,6 +32,7 @@ class VendorController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Vendor::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'required|string|max:255',
@@ -55,6 +59,7 @@ class VendorController extends Controller
      */
     public function edit(Vendor $vendor)
     {
+        $this->authorize('update', $vendor);
         return view('vendors.edit', compact('vendor'));
     }
 
@@ -63,6 +68,7 @@ class VendorController extends Controller
      */
     public function update(Request $request, Vendor $vendor)
     {
+        $this->authorize('update', $vendor);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'required|string|max:255',
@@ -81,6 +87,7 @@ class VendorController extends Controller
      */
     public function destroy(Vendor $vendor)
     {
+        $this->authorize('delete', $vendor);
         $vendor->delete();
         return redirect()->route('vendors.index')->with('success', 'Vendor berhasil dihapus.');
     }

@@ -4,23 +4,41 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\Voucher;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
+    use AuthorizesRequests;
+    /**
+     * Display a listing of the user's invoices.
+     */
+    public function index()
+    {
+        $user = auth()->user();
+        $invoices = Invoice::whereHas('event', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })->with('event')->latest()->paginate(15);
+
+        return view('invoices.index', compact('invoices'));
+    }
+
     /**
      * Tampilkan halamatotal_amountn detail invoice
      */
     public function show(Invoice $invoice)
     {
-        // Load relasi event dan payments
-        $invoice->load('event', 'payments');
+        $this->authorize('view', $invoice);
 
         // Kirim data ke view
         return view('invoices.show', compact('invoice'));
     }
     public function applyVoucher(Request $request, Invoice $invoice)
     {
+        $this->authorize('update', $invoice);
+
+        $invoice->load('event');
+
         $request->validate([
             'voucher_code' => 'required|string|exists:vouchers,code'
         ]);
