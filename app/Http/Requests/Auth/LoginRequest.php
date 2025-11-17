@@ -57,8 +57,28 @@ class LoginRequest extends FormRequest
         $password = $this->input('password');
         $remember = $this->boolean('remember');
 
-        if (! Auth::attempt(['email' => $identity, 'password' => $password], $remember) &&
-            ! Auth::attempt(['username' => $identity, 'password' => $password], $remember)) {
+        // First, find user by either email or username
+        $user = \App\Models\User::where('email', $identity)
+                   ->orWhere('username', $identity)
+                   ->first();
+
+        if (!$user) {
+            // User not found, trigger rate limiter and throw error
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'identity' => trans('auth.failed'),
+            ]);
+        }
+
+        // Determine the login field based on which one matched
+        $loginField = $user->email === $identity ? 'email' : 'username';
+
+        $credentials = [
+            $loginField => $identity,
+            'password' => $password,
+        ];
+
+        if (! Auth::attempt($credentials, $remember)) {
             RateLimiter::hit($this->throttleKey());
             throw ValidationException::withMessages([
                 'identity' => trans('auth.failed'),

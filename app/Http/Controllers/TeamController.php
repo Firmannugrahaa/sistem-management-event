@@ -14,15 +14,6 @@ use Illuminate\Validation\Rules;
 class TeamController extends Controller
 {
     /**
-     * Display a listing of the user's team members.
-     */
-    public function index()
-    {
-        $teamMembers = User::where('owner_id', auth()->id())->with('roles')->paginate(10);
-        return view('team.index', compact('teamMembers'));
-    }
-
-    /**
      * Show the form for creating a new team member.
      */
     public function create()
@@ -50,17 +41,33 @@ class TeamController extends Controller
             'role' => ['required', 'exists:roles,name'],
         ]);
 
+        $creator = auth()->user();
+        $canCreateWithoutApproval = $creator->can('user.auto_approve_on_create');
+
+        // If creator is not a SuperUser, new user belongs to the creator's company.
+        // If creator is a SuperUser, they are creating a new Owner, so owner_id will be set later.
+        $ownerIdForNewUser = !$creator->hasRole('SuperUser') ? ($creator->owner_id ?? $creator->id) : null;
+
         $newUser = User::create([
             'name' => $request->name,
             'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'owner_id' => auth()->id(), // Set the owner
+            'owner_id' => $ownerIdForNewUser,
+            'status' => $canCreateWithoutApproval ? 'approved' : 'pending',
+            'approved_by' => $canCreateWithoutApproval ? $creator->id : null,
+            'approved_at' => $canCreateWithoutApproval ? now() : null,
         ]);
+
+        // If a SuperUser created this user, establish them as the owner of their own new 'company'.
+        if ($creator->hasRole('SuperUser') && $newUser->owner_id === null) {
+            $newUser->owner_id = $newUser->id;
+            $newUser->save();
+        }
 
         $newUser->assignRole($request->role);
 
-        return redirect()->route('team.index')->with('success', 'Team member added successfully.');
+        return redirect()->route('team-vendor.index', ['view' => 'team'])->with('success', 'Team member added successfully.');
     }
 
     /**
@@ -96,14 +103,29 @@ class TeamController extends Controller
         $currentYear = date('Y');
         $temporaryPassword = $request->username . $currentYear;
         
+        $creator = auth()->user();
+        $canCreateWithoutApproval = $creator->can('vendor.auto_approve_on_create');
+
+        // If creator is not a SuperUser, new user belongs to the creator's company.
+        $ownerIdForNewUser = !$creator->hasRole('SuperUser') ? ($creator->owner_id ?? $creator->id) : null;
+
         $vendorUser = User::create([
             'name' => $request->business_name,
             'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($temporaryPassword),
-            'owner_id' => auth()->id(),
+            'owner_id' => $ownerIdForNewUser,
             'must_change_password' => true,
+            'status' => $canCreateWithoutApproval ? 'approved' : 'pending',
+            'approved_by' => $canCreateWithoutApproval ? $creator->id : null,
+            'approved_at' => $canCreateWithoutApproval ? now() : null,
         ]);
+
+        // If a SuperUser created this user, establish them as the owner of their own new 'company'.
+        if ($creator->hasRole('SuperUser') && $vendorUser->owner_id === null) {
+            $vendorUser->owner_id = $vendorUser->id;
+            $vendorUser->save();
+        }
 
         $vendorUser->assignRole('Vendor');
 
@@ -119,7 +141,7 @@ class TeamController extends Controller
             'address' => $request->address,
         ]);
 
-        return redirect()->route('team.index')->with('success', 'Vendor added successfully!');
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', 'Vendor added successfully!');
     }
 
     /**
@@ -177,7 +199,7 @@ class TeamController extends Controller
         $member->roles()->sync([]);
         $member->assignRole($request->role);
 
-        return redirect()->route('team.index')->with('success', 'Team member updated successfully.');
+        return redirect()->route('team-vendor.index', ['view' => 'team'])->with('success', 'Team member updated successfully.');
     }
 
     /**
@@ -192,7 +214,65 @@ class TeamController extends Controller
 
         $member->delete();
 
-        return redirect()->route('team.index')->with('success', 'Team member removed successfully.');
+        return redirect()->route('team-vendor.index', ['view' => 'team'])->with('success', 'Team member removed successfully.');
+    }
+
+    /**
+     * Approve a pending team member.
+     */
+    public function approveUser(User $member)
+    {
+        $member->update([
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
+
+        return redirect()->route('team-vendor.index', ['view' => 'team'])->with('success', 'Team member approved successfully.');
+    }
+
+    /**
+     * Reject and delete a pending team member.
+     */
+    public function rejectUser(User $member)
+    {
+        // Ensure we are only rejecting a pending user
+        if ($member->status !== 'pending') {
+            return redirect()->route('team-vendor.index', ['view' => 'team'])->with('error', 'This user is not pending approval.');
+        }
+        $memberName = $member->name;
+        $member->delete();
+
+        return redirect()->route('team-vendor.index', ['view' => 'team'])->with('success', "Pending team member '{$memberName}' has been rejected and removed.");
+    }
+
+    /**
+     * Approve a pending vendor.
+     */
+    public function approveVendor(User $user)
+    {
+        $user->update([
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
+
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', 'Vendor approved successfully.');
+    }
+
+    /**
+     * Reject and delete a pending vendor.
+     */
+    public function rejectVendor(User $user)
+    {
+        // Ensure we are only rejecting a pending user
+        if ($user->status !== 'pending') {
+            return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('error', 'This vendor is not pending approval.');
+        }
+        $vendorName = $user->name;
+        $user->delete();
+
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', "Pending vendor '{$vendorName}' has been rejected and removed.");
     }
 }
 
