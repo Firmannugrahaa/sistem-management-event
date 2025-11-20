@@ -73,28 +73,97 @@
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Vendor Tersedia</h2>
                 <p class="text-gray-600 max-w-2xl mx-auto text-lg">Partner terpercaya kami yang siap membantu mewujudkan acara Anda</p>
             </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                @forelse($vendors as $vendor)
-                    <div class="bg-gray-50 rounded-2xl p-6 text-center hover:shadow-xl transition-all duration-300 border border-gray-100">
-                        <div class="bg-gray-200 border-2 border-dashed rounded-full w-20 h-20 mx-auto mb-5" />
-                        <h3 class="text-lg font-bold text-gray-800 mb-2">{{ $vendor->user ? $vendor->user->name : ($vendor->contact_person ?? 'Vendor') }}</h3>
-                        <p class="text-sm text-primary font-medium mb-3">{{ $vendor->serviceType ? $vendor->serviceType->name : ($vendor->category ?? 'Service Type') }}</p>
-                        <p class="text-xs text-gray-500 mb-4">{{ $vendor->phone_number ?? 'No phone' }}</p>
-                        <div class="flex justify-center">
-                            <a href="#" class="text-sm text-primary font-medium hover:text-blue-800 transition">Lihat Profil →</a>
+
+            <!-- Carousel Container -->
+            <div class="relative" x-data="{
+                    currentIndex: 0,
+                    vendors: @json($vendors, JSON_HEX_TAG | JSON_HEX_AMP),
+                    itemsPerPage: 4
+                }"
+                 x-init="
+                    function updateItemsPerPage() {
+                        if (window.innerWidth >= 1024) itemsPerPage = 4;
+                        else if (window.innerWidth >= 768) itemsPerPage = 3;
+                        else if (window.innerWidth >= 640) itemsPerPage = 2;
+                        else itemsPerPage = 1;
+                    }
+                    updateItemsPerPage();
+                    window.addEventListener('resize', updateItemsPerPage);
+                    // Ensure initial state is valid
+                    if (vendors.length === 0) {
+                        itemsPerPage = 1;
+                    }
+                 ">
+                <!-- Vendor Cards Carousel -->
+                <div class="overflow-hidden" style="min-height: 350px;">
+                    <template x-if="vendors.length > 0">
+                        <div class="flex transition-transform duration-500 ease-in-out" :style="`transform: translateX(-${currentIndex * (100 / itemsPerPage)}%);`">
+                            <template x-for="(vendor, index) in vendors" :key="index">
+                                <div class="flex-shrink-0 px-3" :style="`width: ${100 / itemsPerPage}%`">
+                                    <div class="bg-gray-50 rounded-2xl p-6 text-center hover:shadow-xl transition-all duration-300 border border-gray-100 h-full">
+                                        <div class="bg-gray-200 border-2 border-dashed rounded-full w-20 h-20 mx-auto mb-5 flex items-center justify-center">
+                                            <span class="text-gray-500 text-xs text-center leading-tight" x-text="vendor.user?.name?.charAt(0) || vendor.contact_person?.charAt(0) || 'V'"></span>
+                                        </div>
+                                        <h3 class="text-lg font-bold text-gray-800 mb-2 truncate" x-text="vendor.user ? vendor.user.name : (vendor.contact_person || 'Vendor')">Vendor</h3>
+                                        <p class="text-sm text-primary font-medium mb-2 truncate" x-text="vendor.serviceType ? vendor.serviceType.name : (vendor.category || 'Service Type')"></p>
+                                        <p class="text-xs text-gray-500 mb-3" x-text="vendor.phone_number || 'No phone'"></p>
+                                        <div class="flex justify-center mt-2">
+                                            <a :href="'/vendors/' + vendor.id" class="text-sm text-primary font-medium hover:text-blue-800 transition whitespace-nowrap">Lihat Profil →</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
-                    </div>
-                @empty
-                    <div class="col-span-full text-center py-16">
-                        <p class="text-gray-500 text-lg">Belum ada vendor tersedia</p>
-                    </div>
-                @endforelse
+                    </template>
+                    <template x-if="vendors.length === 0">
+                        <div class="text-center py-16">
+                            <p class="text-gray-500 text-lg">Belum ada vendor tersedia</p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Navigation Arrows -->
+                <template x-if="vendors.length > 0">
+                <div>
+                    <button @click="if(currentIndex > 0) currentIndex--"
+                        :disabled="currentIndex === 0"
+                        class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-6 bg-white rounded-full p-3 shadow-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed z-10">
+                        <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+
+                    <button @click="if(currentIndex < Math.ceil(vendors.length / itemsPerPage) - 1) currentIndex++"
+                        :disabled="currentIndex >= Math.ceil(vendors.length / itemsPerPage) - 1"
+                        class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-6 bg-white rounded-full p-3 shadow-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed z-10">
+                        <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+                </template>
+
+                <!-- Pagination Indicators -->
+                <template x-if="vendors.length > 0">
+                <div class="flex justify-center mt-10 space-x-2">
+                    <template x-for="i in Math.ceil(vendors.length / itemsPerPage)" :key="i">
+                        <button
+                            @click="currentIndex = i - 1"
+                            :class="{
+                                'w-3 h-3 rounded-full': true,
+                                'bg-primary': currentIndex === i - 1,
+                                'bg-gray-300': currentIndex !== i - 1
+                            }"
+                            :aria-label="`Go to page ${i}`"
+                        ></button>
+                    </template>
+                </div>
+                </template>
             </div>
-            
+
             @if(count($vendors) > 0)
                 <div class="text-center mt-16">
-                    <a href="#" class="inline-block bg-primary text-white px-8 py-4 rounded-lg font-medium hover:bg-blue-800 transition shadow-lg">Lihat Semua Vendor</a>
+                    <a href="{{ route('vendors.index') }}" class="inline-block bg-primary text-white px-8 py-4 rounded-lg font-medium hover:bg-blue-800 transition shadow-lg">Lihat Semua Vendor</a>
                 </div>
             @endif
         </div>

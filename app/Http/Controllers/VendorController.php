@@ -34,7 +34,8 @@ class VendorController extends Controller
     {
         $this->authorize('create', Vendor::class);
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'user_id' => 'required|exists:users,id|unique:vendors,user_id', // Ensure user_id is provided and unique
+            'service_type_id' => 'required|exists:service_types,id',
             'category' => 'required|string|max:255',
             'contact_person' => 'required|string|max:255',
             'phone_number' => 'required|string|max:20',
@@ -51,7 +52,17 @@ class VendorController extends Controller
      */
     public function show(Vendor $vendor)
     {
-        return redirect()->route('vendors.edit', $vendor->id);
+        // In real application, this would come from reviews/ratings system
+        $vendorRatings = [
+            ['user' => 'Budi Santoso', 'rating' => 5, 'comment' => 'Layanan sangat profesional dan berkualitas tinggi. Akan menggunakan jasa mereka lagi di masa depan.', 'date' => '2024-11-15'],
+            ['user' => 'Siti Nurhaliza', 'rating' => 4, 'comment' => 'Pekerjaan bagus dan tepat waktu, hanya sedikit masalah komunikasi awal.', 'date' => '2024-10-22'],
+            ['user' => 'Ahmad Fauzi', 'rating' => 5, 'comment' => 'Sangat puas dengan layanan yang diberikan. Kualitas produk luar biasa!', 'date' => '2024-09-30'],
+        ];
+
+        $averageRating = collect($vendorRatings)->avg('rating');
+        $totalReviews = count($vendorRatings);
+
+        return view('vendors.show', compact('vendor', 'vendorRatings', 'averageRating', 'totalReviews'));
     }
 
     /**
@@ -70,7 +81,8 @@ class VendorController extends Controller
     {
         $this->authorize('update', $vendor);
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'user_id' => 'required|exists:users,id|unique:vendors,user_id,' . $vendor->id, // Allow same vendor to keep its user_id
+            'service_type_id' => 'required|exists:service_types,id',
             'category' => 'required|string|max:255',
             'contact_person' => 'required|string|max:255',
             'phone_number' => 'required|string|max:20',

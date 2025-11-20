@@ -17,9 +17,9 @@
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 mt-6">
             <thead>
               <tr>
-                <th class="px-6 py-3 text-left ...">Nama</th>
-                <th class="px-6 py-3 text-left ...">Kategori</th>
                 <th class="px-6 py-3 text-left ...">Kontak Person</th>
+                <th class="px-6 py-3 text-left ...">Kategori</th>
+                <th class="px-6 py-3 text-left ...">Alamat</th>
                 <th class="px-6 py-3 text-left ...">No. Telepon</th>
                 <th class="px-6 py-3 text-right ...">Aksi</th>
               </tr>
@@ -27,12 +27,16 @@
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               @forelse ($vendors as $vendor)
               <tr>
-                <td class="px-6 py-4">{{ $vendor->name }}</td>
-                <td class="px-6 py-4">{{ $vendor->category }}</td>
                 <td class="px-6 py-4">{{ $vendor->contact_person }}</td>
+                <td class="px-6 py-4">{{ $vendor->category }}</td>
+                <td class="px-6 py-4">{{ $vendor->address ?: '-' }}</td>
                 <td class="px-6 py-4">{{ $vendor->phone_number }}</td>
                 <td class="px-6 py-4 text-right">
                   <!-- Edit button (now a direct link) -->
+                  <a href="{{ route('vendors.show', $vendor->id) }}"
+                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-25 transition ease-in-out duration-150 mr-2">
+                    Lihat
+                  </a>
                   <a href="{{ route('vendors.edit', $vendor->id) }}"
                     class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-25 transition ease-in-out duration-150">
                     Edit

@@ -18,7 +18,12 @@ class TeamController extends Controller
      */
     public function index()
     {
-        $teamMembers = User::where('owner_id', auth()->id())->with('roles')->paginate(10);
+        $teamMembers = User::where('owner_id', auth()->id())
+                         ->whereDoesntHave('roles', function ($query) {
+                             $query->where('name', 'Vendor');
+                         })
+                         ->with('roles')
+                         ->paginate(10);
         return view('team.index', compact('teamMembers'));
     }
 
@@ -119,7 +124,7 @@ class TeamController extends Controller
             'address' => $request->address,
         ]);
 
-        return redirect()->route('team.index')->with('success', 'Vendor added successfully!');
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', 'Vendor added successfully!');
     }
 
     /**

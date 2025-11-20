@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             ServiceTypeSeeder::class,
             PortfolioSeeder::class,
             ServiceSeeder::class,
+            VendorProfileSeeder::class,
         ]);
     }
 }

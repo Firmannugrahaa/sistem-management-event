@@ -17,7 +17,12 @@ class TeamVendorController extends Controller
         $vendors = null;
 
         if ($view === 'team') {
-            $teamMembers = User::where('owner_id', auth()->id())->with('roles')->paginate(10);
+            $teamMembers = User::where('owner_id', auth()->id())
+                             ->whereDoesntHave('roles', function ($query) {
+                                 $query->where('name', 'Vendor');
+                             })
+                             ->with('roles')
+                             ->paginate(10);
         } elseif ($view === 'vendor') {
             $vendors = Vendor::whereHas('user', function($query) {
                 $query->where('owner_id', auth()->id());
