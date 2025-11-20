@@ -2,24 +2,78 @@
 
 @section('content')
     <!-- Hero Section -->
-    <section class="bg-gradient-to-r from-primary to-blue-900 text-white py-24">
-        <div class="container mx-auto px-6">
+    <section class="relative bg-gradient-to-r from-primary to-blue-900 text-white py-24 overflow-hidden">
+        <!-- Carousel Background -->
+        <div x-data="{
+            currentIndex: 0,
+            images: [
+                {
+                    url: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&h=600&q=80',
+                    alt: 'Wedding Event'
+                },
+                {
+                    url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&h=600&q=80',
+                    alt: 'Corporate Event'
+                },
+                {
+                    url: 'https://images.unsplash.com/photo-1557893316-479e1c9dae12?auto=format&fit=crop&w=1200&h=600&q=80',
+                    alt: 'Conference Event'
+                },
+                {
+                    url: 'https://images.unsplash.com/photo-1560818135-64a643f1b2a7?auto=format&fit=crop&w=1200&h=600&q=80',
+                    alt: 'Music Festival'
+                }
+            ],
+            autoSlide: true,
+            slideInterval: null
+        }"
+        x-init="
+            // Auto slide every 5 seconds
+            slideInterval = setInterval(() => {
+                currentIndex = (currentIndex + 1) % images.length;
+            }, 5000);
+        "
+        class="absolute inset-0 z-0">
+
+            <!-- Background Images -->
+            <template x-for="(image, index) in images" :key="index">
+                <div class="absolute inset-0 transition-opacity duration-1500 ease-in-out"
+                     :class="{ 'opacity-100 z-10': index === currentIndex, 'opacity-0 z-0': index !== currentIndex }">
+                    <img :src="image.url"
+                         :alt="image.alt"
+                         class="w-full h-full object-cover mix-blend-overlay">
+                </div>
+            </template>
+        </div>
+
+        <!-- Overlay Gradient -->
+        <div class="absolute inset-0 bg-gradient-to-r from-primary/90 via-primary/70 to-blue-900/5 z-10"></div>
+
+        <!-- Text Container with Enhanced Readability -->
+        <div class="container mx-auto px-6 relative z-20">
             <div class="flex flex-col md:flex-row items-center">
                 <div class="md:w-1/2 mb-12 md:mb-0">
-                    <h1 class="text-4xl md:text-5xl font-bold mb-6 leading-tight">Wujudkan Acara Impian Anda dengan Profesional</h1>
-                    <p class="text-xl mb-8 max-w-lg">Layanan lengkap untuk semua kebutuhan event Anda dengan vendor terpercaya dan layanan berkualitas</p>
+                    <h1 class="text-4xl md:text-5xl font-bold mb-6 leading-tight drop-shadow-lg">Wujudkan Acara Impian Anda dengan Profesional</h1>
+                    <p class="text-xl mb-8 max-w-lg drop-shadow-md">Layanan lengkap untuk semua kebutuhan event Anda dengan vendor terpercaya dan layanan berkualitas</p>
                     <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                         <a href="#services" class="bg-white text-primary px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition shadow-lg text-center">Lihat Layanan</a>
                         <a href="#vendors" class="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-primary transition text-center">Jelajahi Vendor</a>
                     </div>
                 </div>
-                <div class="md:w-1/2 flex justify-center">
-                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 w-full max-w-md">
-                        <img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&h=400&q=80" 
-                             alt="Event" 
-                             class="rounded-xl shadow-2xl w-full h-64 object-cover">
-                    </div>
-                </div>
+            </div>
+
+            <!-- Slider Indicators -->
+            <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30 flex space-x-2">
+                <template x-for="(image, index) in images" :key="index">
+                    <button @click="currentIndex = index"
+                        :class="{
+                            'w-3 h-3 rounded-full': true,
+                            'bg-white': index === currentIndex,
+                            'bg-white/40': index !== currentIndex
+                        }"
+                        :aria-label="`Go to slide ${index + 1}`"
+                    ></button>
+                </template>
             </div>
         </div>
     </section>
@@ -35,8 +89,8 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                 @forelse($portfolios as $portfolio)
                     <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                        <img src="{{ $portfolio->image ? asset('storage/' . $portfolio->image) : 'https://via.placeholder.com/600x400' }}" 
-                             alt="{{ $portfolio->title }}" 
+                        <img src="{{ $portfolio->image ? asset('storage/' . $portfolio->image) : 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&h=400&q=80' }}"
+                             alt="{{ $portfolio->title }}"
                              class="w-full h-56 object-cover">
                         <div class="p-7">
                             <div class="flex justify-between items-start mb-3">
@@ -77,7 +131,10 @@
             <!-- Carousel Container -->
             <div class="relative" x-data="{
                     currentIndex: 0,
-                    vendors: @json($vendors, JSON_HEX_TAG | JSON_HEX_AMP),
+                    vendors: @json($vendors->map(function($vendor) {
+                        $vendor->image_url = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&h=200&q=80';
+                        return $vendor;
+                    }), JSON_HEX_TAG | JSON_HEX_AMP),
                     itemsPerPage: 4
                 }"
                  x-init="
@@ -101,8 +158,11 @@
                             <template x-for="(vendor, index) in vendors" :key="index">
                                 <div class="flex-shrink-0 px-3" :style="`width: ${100 / itemsPerPage}%`">
                                     <div class="bg-gray-50 rounded-2xl p-6 text-center hover:shadow-xl transition-all duration-300 border border-gray-100 h-full">
-                                        <div class="bg-gray-200 border-2 border-dashed rounded-full w-20 h-20 mx-auto mb-5 flex items-center justify-center">
-                                            <span class="text-gray-500 text-xs text-center leading-tight" x-text="vendor.user?.name?.charAt(0) || vendor.contact_person?.charAt(0) || 'V'"></span>
+                                        <div class="w-20 h-20 mx-auto mb-5 rounded-full overflow-hidden">
+                                            <img :src="vendor.image_url ? vendor.image_url : 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&h=200&q=80'"
+                                                 :alt="vendor.user?.name || vendor.contact_person || 'Vendor'"
+                                                 class="w-full h-full object-cover"
+                                                 onerror="this.src='https://via.placeholder.com/200x200/cccccc/666666?text=V'; this.onerror=null;">
                                         </div>
                                         <h3 class="text-lg font-bold text-gray-800 mb-2 truncate" x-text="vendor.user ? vendor.user.name : (vendor.contact_person || 'Vendor')">Vendor</h3>
                                         <p class="text-sm text-primary font-medium mb-2 truncate" x-text="vendor.serviceType ? vendor.serviceType.name : (vendor.category || 'Service Type')"></p>
@@ -180,8 +240,8 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                 @forelse($services as $service)
                     <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                        <img src="{{ $service->image ? asset('storage/' . $service->image) : 'https://via.placeholder.com/600x400' }}" 
-                             alt="{{ $service->name }}" 
+                        <img src="{{ $service->image ? asset('storage/' . $service->image) : 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&h=400&q=80' }}"
+                             alt="{{ $service->name }}"
                              class="w-full h-52 object-cover">
                         <div class="p-7">
                             <div class="flex justify-between items-start mb-4">
@@ -195,7 +255,7 @@
                             <h3 class="text-xl font-bold text-gray-800 mb-3">{{ $service->name }}</h3>
                             <p class="text-gray-600 mb-6">{{ \Illuminate\Support\Str::limit($service->description, 100) }}</p>
                             <div class="flex justify-between items-center mb-6">
-                                <span class="text-2xl font-bold text-primary">Rp {{ number_format($service->price, 0, ',', '.') }}</span>
+                                <span class="text-2xl font-bold text-primary">Mulai dari Rp {{ number_format($service->price, 0, ',', '.') }}</span>
                                 <span class="text-gray-500">{{ $service->duration }} jam</span>
                             </div>
                             @if($service->is_available)
@@ -228,10 +288,10 @@
     <section class="py-20 bg-gradient-to-r from-primary to-blue-800 text-white">
         <div class="container mx-auto px-6 text-center">
             <h2 class="text-3xl md:text-4xl font-bold mb-6">Siap untuk Event Terbaik Anda?</h2>
-            <p class="text-xl mb-10 max-w-2xl mx-auto">Hubungi kami sekarang dan biarkan kami mewujudkan acara impian Anda</p>
+            <p class="text-xl mb-10 max-w-2xl mx-auto">{{ $companySetting->company_name ?? 'EventScape' }} siap membantu mewujudkan acara impian Anda</p>
             <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
-                <a href="#" class="bg-white text-primary px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition shadow-lg">Hubungi Kami</a>
-                <a href="#" class="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white hover:text-primary transition">Konsultasi Gratis</a>
+                <a href="tel:{{ $companySetting->company_phone ?? '#' }}" class="bg-white text-primary px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition shadow-lg">Hubungi Kami: {{ $companySetting->company_phone ?? 'Hubungi Kami' }}</a>
+                <a href="mailto:{{ $companySetting->company_email ?? '#' }}" class="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white hover:text-primary transition">Konsultasi Gratis</a>
             </div>
         </div>
     </section>

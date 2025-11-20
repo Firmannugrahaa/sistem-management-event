@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Portfolio;
 use App\Models\Vendor;
 use App\Models\Service;
+use App\Models\CompanySetting;
 
 class LandingPageController extends Controller
 {
@@ -24,6 +25,9 @@ class LandingPageController extends Controller
                         ->get();
         $services = Service::limit(6)->get();
 
-        return view('landing-page.index', compact('portfolios', 'vendors', 'services'));
+        // Ambil data company settings
+        $companySetting = CompanySetting::first();
+
+        return view('landing-page.index', compact('portfolios', 'vendors', 'services', 'companySetting'));
     }
 }

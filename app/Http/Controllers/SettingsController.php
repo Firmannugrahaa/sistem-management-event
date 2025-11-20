@@ -67,7 +67,8 @@ class SettingsController extends Controller
             'company_name' => 'required|string|max:255',
             'company_phone' => 'required|string|max:20',
             'company_email' => 'required|email|max:255',
-            'company_address' => 'nullable|string',
+            'company_address' => 'nullable|string|max:500',
+            'company_logo_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'province_id' => 'nullable|exists:provinces,id',
             'city_id' => 'nullable|exists:cities,id',
             'district_id' => 'nullable|exists:districts,id',
@@ -76,7 +77,7 @@ class SettingsController extends Controller
             'street_name' => 'nullable|string|max:255',
             'building' => 'nullable|string|max:255',
             'company_number' => 'nullable|string|max:50',
-            'address_details' => 'nullable|string',
+            'address_details' => 'nullable|string|max:255',
             'tax_number' => 'nullable|string|max:255',
             'bank_account_name' => 'nullable|string|max:255',
             'bank_account_number' => 'nullable|string|max:255',
@@ -126,8 +127,24 @@ class SettingsController extends Controller
         // Generate the structured address
         $generatedAddress = implode(', ', $addressParts);
         
-        // Use the generated address if company_address is empty
+        // Handle company logo upload
+        if ($request->hasFile('company_logo_path')) {
+            // Delete old logo if exists
+            if ($settings && $settings->company_logo_path) {
+                $oldLogoPath = storage_path('app/public/' . $settings->company_logo_path);
+                if (file_exists($oldLogoPath)) {
+                    unlink($oldLogoPath);
+                }
+            }
+
+            // Store new logo
+            $logoPath = $request->file('company_logo_path')->store('logos', 'public');
+            $request->merge(['company_logo_path' => $logoPath]);
+        }
+
+        // Prioritize manual company address, if not provided then generate from structured fields
         if (empty($request->company_address) && !empty($generatedAddress)) {
+            // Only generate address if user hasn't provided a manual address
             $request->merge(['company_address' => $generatedAddress]);
         }
 
@@ -137,6 +154,7 @@ class SettingsController extends Controller
                 'company_phone',
                 'company_email',
                 'company_address',
+                'company_logo_path',
                 'province_id',
                 'city_id',
                 'district_id',
@@ -157,6 +175,7 @@ class SettingsController extends Controller
                 'company_phone',
                 'company_email',
                 'company_address',
+                'company_logo_path',
                 'province_id',
                 'city_id',
                 'district_id',
