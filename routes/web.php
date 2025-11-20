@@ -12,11 +12,11 @@ use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TeamVendorController;
-use App\Http\Controllers\LandingPageController;
-use App\Http\Controllers\TemanHalalController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [TemanHalalController::class, 'index'])->name('temanhalal');
+Route::get('/', function () {
+    return view('welcome');
+});
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])->name('dashboard');
@@ -30,25 +30,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/password/change', [App\Http\Controllers\PasswordChangeController::class, 'create'])->name('password.change');
     Route::post('/password/change', [App\Http\Controllers\PasswordChangeController::class, 'store'])->name('password.change.update');
 
-    // Team Management (Redirected to consolidated view)
-    Route::get('team', function () {
-        return redirect()->route('team-vendor.index', ['view' => 'team']);
-    })->name('team.index');
+    // Team Management
+    Route::resource('team', TeamController::class)->only(['index', 'create', 'store', 'destroy'])->parameters(['team' => 'member']);
     Route::get('team/{member}/edit', [TeamController::class, 'edit'])->name('team.edit');
     Route::put('team/{member}', [TeamController::class, 'update'])->name('team.update');
-    Route::delete('team/{member}', [TeamController::class, 'destroy'])->name('team.destroy');
-    Route::get('team/create', [TeamController::class, 'create'])->name('team.create');
-    Route::post('team', [TeamController::class, 'store'])->name('team.store');
-    Route::post('team/{member}/approve', [TeamController::class, 'approveUser'])->name('team.approve')->middleware('can:user.approve');
-    Route::delete('team/{member}/reject', [TeamController::class, 'rejectUser'])->name('team.reject')->middleware('can:user.approve');
-
     Route::get('team/vendors/create', [TeamController::class, 'createVendor'])->name('team.vendors.create');
     Route::post('team/vendors', [TeamController::class, 'storeVendor'])->name('team.vendors.store');
-    Route::post('vendor/{user}/approve', [TeamController::class, 'approveVendor'])->name('vendor.approve')->middleware('can:vendor.approve');
-    Route::delete('vendor/{user}/reject', [TeamController::class, 'rejectVendor'])->name('vendor.reject')->middleware('can:vendor.approve');
     
     // Combined Team and Vendor Management
     Route::get('/manage-team-vendor', [TeamVendorController::class, 'index'])->name('team-vendor.index');
+
+    // New Livewire Team & Vendor Management
+    Route::get('/team-vendor-management', \App\Livewire\ManageTeamVendor::class)
+        ->middleware(['auth', 'check.team.vendor.access'])
+        ->name('team-vendor.management');
 
     // User-facing Invoice History
     Route::get('/my-invoices', [InvoiceController::class, 'index'])->name('invoices.index');

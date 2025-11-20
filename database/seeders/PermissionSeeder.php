@@ -35,12 +35,17 @@ class PermissionSeeder extends Seeder
             'role.read',
             'role.update',
             'role.delete',
-            // Approval Workflow Permissions
-            'user.auto_approve_on_create',
-            'vendor.auto_approve_on_create',
-            'user.approve',
-            'vendor.approve',
+            // Team & Vendor Management permissions
+            'team_member.read',
+            'team_member.create',
+            'team_member.update',
+            'team_member.delete',
+            'team_member.approve',
+            'vendor.read',
+            'vendor.create',
+            'vendor.update',
             'vendor.delete',
+            'vendor.approve',
         ];
 
         foreach ($permissions as $permission) {
@@ -50,11 +55,7 @@ class PermissionSeeder extends Seeder
         // create other roles and assign specific permissions (excluding SuperUser)
         // SuperUser role and permissions are handled separately in SuperUserSeeder
         $roles = [
-            'Owner' => [
-                'create_events', 'edit_events', 'delete_events', 'view_guests',
-                'user.auto_approve_on_create', 'vendor.auto_approve_on_create',
-                'user.approve', 'vendor.approve', 'user.delete', 'vendor.delete'
-            ],
+            'Owner' => ['create_events', 'edit_events', 'delete_events', 'view_guests'],
             'Admin' => ['view_events', 'create_events', 'edit_events', 'view_guests'],
             'Staff' => ['view_events', 'view_guests'],
             'Vendor' => ['view_events'],
@@ -67,5 +68,25 @@ class PermissionSeeder extends Seeder
             $rolePerms = Permission::whereIn('name', $rolePermissions)->get();
             $role->syncPermissions($rolePerms);
         }
+
+        // Assign specific permissions to Admin role for team/vendor management
+        $adminRole = Role::firstOrCreate(['name' => 'Admin']);
+        $adminPermissions = [
+            'team_member.read',
+            'team_member.create',
+            'team_member.update',
+            'team_member.delete',
+            'team_member.approve',
+            'vendor.read',
+            'vendor.create',
+            'vendor.update',
+            'vendor.delete',
+            'vendor.approve',
+        ];
+        $adminRole->givePermissionTo($adminPermissions);
+
+        // Assign SuperUser role if it doesn't exist
+        $superUserRole = Role::firstOrCreate(['name' => 'SuperUser']);
+        $superUserRole->givePermissionTo(Permission::all());
     }
 }

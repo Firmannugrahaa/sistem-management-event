@@ -23,11 +23,15 @@ class User extends Authenticatable
         'username',
         'email',
         'password',
+        'phone',
+        'avatar',
+        'position',
+        'department',
+        'approval_status',
+        'type',
+        'status',
         'owner_id',
         'must_change_password',
-        'status',
-        'approved_by',
-        'approved_at',
     ];
 
     /**
@@ -61,5 +65,45 @@ class User extends Authenticatable
     public function vendor()
     {
         return $this->hasOne(Vendor::class);
+    }
+
+    /**
+     * Scope to get only team members
+     */
+    public function scopeTeamMembers($query)
+    {
+        return $query->where('type', 'team_member');
+    }
+
+    /**
+     * Scope to get only vendors
+     */
+    public function scopeVendors($query)
+    {
+        return $query->where('type', 'vendor');
+    }
+
+    /**
+     * Scope to filter by approval status
+     */
+    public function scopeApproved($query)
+    {
+        return $query->where('approval_status', 'approved');
+    }
+
+    /**
+     * Scope to filter by approval status
+     */
+    public function scopePending($query)
+    {
+        return $query->where('approval_status', 'pending');
+    }
+
+    /**
+     * Scope to filter by approval status
+     */
+    public function scopeRejected($query)
+    {
+        return $query->where('approval_status', 'rejected');
     }
 }
