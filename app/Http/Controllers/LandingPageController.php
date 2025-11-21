@@ -22,7 +22,13 @@ class LandingPageController extends Controller
                             });
                         })
                         ->limit(8)
-                        ->get();
+                        ->get()
+                        ->map(function ($vendor) {
+                            // Add a placeholder rating - this can be updated when a real rating system is implemented
+                            $vendor->average_rating = 4.5; // Placeholder average rating
+                            $vendor->total_reviews = rand(10, 100); // Placeholder number of reviews
+                            return $vendor;
+                        });
         $services = Service::limit(6)->get();
 
         // Ambil data company settings

@@ -29,14 +29,17 @@ class SuperUserPermissionController extends Controller
     {
         DB::transaction(function () use ($request) {
             $roles = Role::where('name', '!=', 'SuperUser')->get();
-            
+
             foreach ($roles as $role) {
                 $permissionIds = $request->get($role->name, []);
                 $permissions = Permission::whereIn('id', $permissionIds)->get();
                 $role->syncPermissions($permissions);
+
+                // Clear the permission cache for this role to ensure changes take effect immediately
+                app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
             }
         });
-        
+
         return redirect()->route('superuser.permissions.index')->with('status', 'Permissions updated successfully!');
     }
     

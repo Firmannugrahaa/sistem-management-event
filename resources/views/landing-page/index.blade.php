@@ -81,6 +81,13 @@
     <!-- Portfolio Section -->
     <section id="portfolio" class="py-20 bg-gradient-to-b from-gray-50 to-white">
         <div class="container mx-auto px-6">
+            <!-- Decorative header image -->
+            <div class="text-center mb-10">
+                <img src="https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=800&h=200&q=80"
+                     alt="Event Portfolio"
+                     class="mx-auto rounded-xl shadow-md">
+            </div>
+
             <div class="text-center mb-16">
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Portfolio Perusahaan</h2>
                 <p class="text-gray-600 max-w-2xl mx-auto text-lg">Beberapa contoh pekerjaan terbaik kami dalam mengelola berbagai jenis event</p>
@@ -107,6 +114,11 @@
                     </div>
                 @empty
                     <div class="col-span-full text-center py-16">
+                        <div class="mx-auto w-24 h-24 mb-6 opacity-50">
+                            <img src="https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=200&h=200&q=80"
+                                 alt="No portfolio images"
+                                 class="w-full h-full object-cover rounded-full">
+                        </div>
                         <p class="text-gray-500 text-lg">Belum ada portfolio tersedia</p>
                     </div>
                 @endforelse
@@ -123,6 +135,13 @@
     <!-- Vendors Section -->
     <section id="vendors" class="py-20 bg-white">
         <div class="container mx-auto px-6">
+            <!-- Decorative header image -->
+            <div class="text-center mb-10">
+                <img src="https://images.unsplash.com/photo-1512485694743-9c9538b4e4e7?auto=format&fit=crop&w=800&h=200&q=80"
+                     alt="Event Vendors"
+                     class="mx-auto rounded-xl shadow-md">
+            </div>
+
             <div class="text-center mb-16">
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Vendor Tersedia</h2>
                 <p class="text-gray-600 max-w-2xl mx-auto text-lg">Partner terpercaya kami yang siap membantu mewujudkan acara Anda</p>
@@ -131,10 +150,21 @@
             <!-- Carousel Container -->
             <div class="relative" x-data="{
                     currentIndex: 0,
-                    vendors: @json($vendors->map(function($vendor) {
-                        $vendor->image_url = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&h=200&q=80';
-                        return $vendor;
-                    }), JSON_HEX_TAG | JSON_HEX_AMP),
+                    vendors: @php echo json_encode($vendors->map(function($vendor) {
+                        // Prepare vendor data with all necessary information
+                        $vendorData = [
+                            'id' => $vendor->id,
+                            'name' => $vendor->user ? $vendor->user->name : $vendor->contact_person,
+                            'category' => $vendor->serviceType ? $vendor->serviceType->name : $vendor->category,
+                            'phone_number' => $vendor->phone_number,
+                            'image_url' => $vendor->user && $vendor->user->profile_photo_path
+                                ? asset('storage/' . $vendor->user->profile_photo_path)
+                                : (isset($vendor->image_url) ? $vendor->image_url : null),
+                            'average_rating' => $vendor->average_rating ?? 0,
+                            'total_reviews' => $vendor->total_reviews ?? 0
+                        ];
+                        return $vendorData;
+                    })->toArray(), JSON_HEX_TAG | JSON_HEX_AMP) @endphp,
                     itemsPerPage: 4
                 }"
                  x-init="
@@ -159,13 +189,29 @@
                                 <div class="flex-shrink-0 px-3" :style="`width: ${100 / itemsPerPage}%`">
                                     <div class="bg-gray-50 rounded-2xl p-6 text-center hover:shadow-xl transition-all duration-300 border border-gray-100 h-full">
                                         <div class="w-20 h-20 mx-auto mb-5 rounded-full overflow-hidden">
-                                            <img :src="vendor.image_url ? vendor.image_url : 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&h=200&q=80'"
-                                                 :alt="vendor.user?.name || vendor.contact_person || 'Vendor'"
+                                            <img :src="vendor.image_url || 'https://ui-avatars.com/api/?name=' + (vendor.name || 'Vendor') + '&background=0D8ABC&color=fff'"
+                                                 :alt="vendor.name || 'Vendor'"
                                                  class="w-full h-full object-cover"
-                                                 onerror="this.src='https://via.placeholder.com/200x200/cccccc/666666?text=V'; this.onerror=null;">
+                                                 onerror="this.src='https://ui-avatars.com/api/?name=' + (vendor.name || 'Vendor') + '&background=0D8ABC&color=fff'; this.onerror=null;">
                                         </div>
-                                        <h3 class="text-lg font-bold text-gray-800 mb-2 truncate" x-text="vendor.user ? vendor.user.name : (vendor.contact_person || 'Vendor')">Vendor</h3>
-                                        <p class="text-sm text-primary font-medium mb-2 truncate" x-text="vendor.serviceType ? vendor.serviceType.name : (vendor.category || 'Service Type')"></p>
+
+                                        <!-- Rating Display -->
+                                        <div class="flex justify-center items-center mb-2">
+                                            <div class="flex">
+                                                <template x-for="i in 5">
+                                                    <svg :class="{'text-yellow-400': i <= Math.floor(vendor.average_rating), 'text-gray-300': i > Math.floor(vendor.average_rating)}"
+                                                         class="w-4 h-4 fill-current"
+                                                         xmlns="http://www.w3.org/2000/svg"
+                                                         viewBox="0 0 24 24">
+                                                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                                    </svg>
+                                                </template>
+                                            </div>
+                                            <span class="ml-1 text-xs text-gray-500" x-text="'(' + vendor.total_reviews + ')'"></span>
+                                        </div>
+
+                                        <h3 class="text-lg font-bold text-gray-800 mb-2 truncate" x-text="vendor.name || 'Vendor'">Vendor</h3>
+                                        <p class="text-sm text-primary font-medium mb-2 truncate" x-text="vendor.category || 'Service Type'"></p>
                                         <p class="text-xs text-gray-500 mb-3" x-text="vendor.phone_number || 'No phone'"></p>
                                         <div class="flex justify-center mt-2">
                                             <a :href="'/vendors/' + vendor.id" class="text-sm text-primary font-medium hover:text-blue-800 transition whitespace-nowrap">Lihat Profil →</a>
@@ -177,6 +223,11 @@
                     </template>
                     <template x-if="vendors.length === 0">
                         <div class="text-center py-16">
+                            <div class="mx-auto w-24 h-24 mb-6 opacity-50">
+                                <img src="https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&w=200&h=200&q=80"
+                                     alt="No vendors available"
+                                     class="w-full h-full object-cover rounded-full">
+                            </div>
                             <p class="text-gray-500 text-lg">Belum ada vendor tersedia</p>
                         </div>
                     </template>
@@ -232,6 +283,13 @@
     <!-- Services Section -->
     <section id="services" class="py-20 bg-gradient-to-b from-white to-gray-50">
         <div class="container mx-auto px-6">
+            <!-- Decorative header image -->
+            <div class="text-center mb-10">
+                <img src="https://images.unsplash.com/photo-1513542789411-b6a5bdc1d6d7?auto=format&fit=crop&w=800&h=200&q=80"
+                     alt="Event Services"
+                     class="mx-auto rounded-xl shadow-md">
+            </div>
+
             <div class="text-center mb-16">
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Layanan Tersedia</h2>
                 <p class="text-gray-600 max-w-2xl mx-auto text-lg">Berbagai pilihan layanan untuk kebutuhan event Anda</p>
@@ -271,6 +329,11 @@
                     </div>
                 @empty
                     <div class="col-span-full text-center py-16">
+                        <div class="mx-auto w-24 h-24 mb-6 opacity-50">
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&h=200&q=80"
+                                 alt="No services available"
+                                 class="w-full h-full object-cover rounded-full">
+                        </div>
                         <p class="text-gray-500 text-lg">Belum ada layanan tersedia</p>
                     </div>
                 @endforelse
@@ -285,8 +348,15 @@
     </section>
 
     <!-- CTA Section -->
-    <section class="py-20 bg-gradient-to-r from-primary to-blue-800 text-white">
-        <div class="container mx-auto px-6 text-center">
+    <section class="py-20 bg-gradient-to-r from-primary to-blue-800 text-white relative overflow-hidden">
+        <!-- Background Image -->
+        <div class="absolute inset-0 opacity-10">
+            <img src="https://images.unsplash.com/photo-1529254479751-fbacb4c7d10d?auto=format&fit=crop&w=1200&h=600&q=60"
+                 alt="Event Celebration"
+                 class="w-full h-full object-cover">
+        </div>
+
+        <div class="container mx-auto px-6 text-center relative z-10">
             <h2 class="text-3xl md:text-4xl font-bold mb-6">Siap untuk Event Terbaik Anda?</h2>
             <p class="text-xl mb-10 max-w-2xl mx-auto">{{ $companySetting->company_name ?? 'EventScape' }} siap membantu mewujudkan acara impian Anda</p>
             <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
