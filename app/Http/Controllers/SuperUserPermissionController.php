@@ -21,7 +21,7 @@ class SuperUserPermissionController extends Controller
         foreach ($roles as $role) {
             $rolePermissions[$role->name] = $role->permissions->pluck('id')->toArray();
         }
-        
+
         return view('superuser.permissions', compact('roles', 'permissions', 'rolePermissions'));
     }
     

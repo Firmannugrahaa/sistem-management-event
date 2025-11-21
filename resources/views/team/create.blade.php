@@ -39,9 +39,9 @@
                             <select id="role" name="role" required class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
                                 <option value="">Select a role</option>
                                 @foreach($roles as $role)
-                                    <option value="{{ $role->name }}" {{ old('role') == $role->name ? 'selected' : '' }}>
-                                        {{ $role->name }}
-                                    </option>
+                                <option value="{{ $role->name }}" {{ old('role') == $role->name ? 'selected' : '' }}>
+                                    {{ $role->name }}
+                                </option>
                                 @endforeach
                             </select>
                             <x-input-error :messages="$errors->get('role')" class="mt-2" />
@@ -62,7 +62,7 @@
                         </div>
 
                         <div class="flex items-center justify-end mt-6">
-                            <a href="{{ route('team.index') }}" class="text-sm text-gray-600 hover:text-gray-900 underline">
+                            <a href="{{ route('team-vendor.index') }}" class="text-sm text-gray-600 hover:text-gray-900 underline">
                                 Cancel
                             </a>
 

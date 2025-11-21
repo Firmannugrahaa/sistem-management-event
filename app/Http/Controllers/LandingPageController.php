@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Portfolio;
 use App\Models\Vendor;
 use App\Models\Service;
@@ -15,14 +14,14 @@ class LandingPageController extends Controller
         // Mengambil data portfolio, vendor, dan layanan
         $portfolios = Portfolio::limit(6)->get();
         $vendors = Vendor::with(['user', 'serviceType'])
-                        ->whereNotNull('user_id')
-                        ->whereHas('user', function($query) {
-                            $query->whereHas('roles', function($roleQuery) {
-                                $roleQuery->where('name', 'Vendor');
-                            });
-                        })
-                        ->limit(8)
-                        ->get();
+            ->whereNotNull('user_id')
+            ->whereHas('user', function ($query) {
+                $query->whereHas('roles', function ($roleQuery) {
+                    $roleQuery->where('name', 'Vendor');
+                });
+            })
+            ->limit(8)
+            ->get();
         $services = Service::limit(6)->get();
 
         // Ambil data company settings

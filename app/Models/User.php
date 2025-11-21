@@ -25,6 +25,9 @@ class User extends Authenticatable
         'password',
         'owner_id',
         'must_change_password',
+        'status',
+        'approved_by',
+        'approved_at',
     ];
 
     /**
