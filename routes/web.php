@@ -100,9 +100,38 @@ Route::middleware('auth')->group(function () {
     //7. Route untuk membatalkan voucher dari invoice
     Route::post('invoices/{invoice}/invalidate-voucher', [InvoiceController::class, 'invalidateVoucher'])
         ->name('invoice.invalidateVoucher');
+
+    // Vendor Dashboard Routes
+    Route::prefix('vendor')->name('vendor.')->group(function () {
+        Route::get('/profile', function() {
+            return redirect()->route('vendors.index');
+        })->name('profile');
+
+        Route::get('/events', function () {
+            $vendor = auth()->user()->vendor;
+            if (!$vendor) {
+                abort(403, 'Anda bukan vendor');
+            }
+            $events = $vendor->events()->with('user', 'venue')->paginate(10);
+            return view('vendor-dashboard.events.index', compact('events'));
+        })->name('events.index');
+
+        Route::get('/reviews', function () {
+            return view('vendor-dashboard.reviews.index');
+        })->name('reviews.index');
+
+        // Vendor Services Routes
+        Route::resource('services', \App\Http\Controllers\VendorServiceController::class);
+    });
 });
 
 use App\Http\Controllers\SuperUserPermissionController;
+
+// API routes for vendor dashboard
+Route::middleware(['auth'])->group(function () {
+    Route::get('/api/vendor/services/{id}', [\App\Http\Controllers\ApiVendorController::class, 'getService']);
+    Route::get('/api/vendor/{vendorId}/venue-service', [\App\Http\Controllers\ApiVendorController::class, 'getVendorVenueService']);
+});
 
 Route::get('tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
 
@@ -140,6 +169,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/settings', [App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
         Route::put('/settings', [App\Http\Controllers\SettingsController::class, 'update'])->name('settings.update');
     });
+    
+    // Logo deletion route - must be outside the prefix to match POST method from form
+    Route::delete('superuser/settings/logo', [App\Http\Controllers\SettingsController::class, 'deleteLogo'])
+        ->middleware(['auth', 'can:access-settings'])
+        ->name('superuser.settings.logo.delete');
+
 
     // API routes for location dropdowns using Indonesian address API
     Route::middleware(['auth'])->group(function () {

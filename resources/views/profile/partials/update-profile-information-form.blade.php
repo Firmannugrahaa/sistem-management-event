@@ -53,6 +53,41 @@
             @endif
         </div>
 
+        <!-- Company Name Field -->
+        @php
+            $companySetting = \App\Models\CompanySetting::first();
+            $companyName = $companySetting ? $companySetting->company_name : 'Belum diatur';
+            $isSuperUser = $user->hasRole('SuperUser');
+        @endphp
+        <div>
+            <x-input-label for="company_name" :value="__('Nama Perusahaan')" />
+            <x-text-input id="company_name" 
+                         name="company_name" 
+                         type="text" 
+                         class="mt-1 block w-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed" 
+                         :value="$companyName" 
+                         disabled
+                         readonly />
+            <p class="mt-1 text-xs text-gray-500">Field ini tidak dapat diedit.</p>
+        </div>
+
+        <!-- Job Title (Jabatan) Field -->
+        @php
+            $roleName = $user->getRoleNames()->first() ?? 'User';
+            $jabatan = $roleName;
+        @endphp
+        <div>
+            <x-input-label for="jabatan" :value="__('Jabatan')" />
+            <x-text-input id="jabatan" 
+                         name="jabatan" 
+                         type="text" 
+                         class="mt-1 block w-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed" 
+                         :value="$jabatan" 
+                         disabled
+                         readonly />
+            <p class="mt-1 text-xs text-gray-500">Jabatan ditentukan oleh role akun Anda.</p>
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

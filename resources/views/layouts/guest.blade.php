@@ -69,7 +69,7 @@
     
     <script>
         // Safely pass PHP data to JavaScript
-        const VENDORS = @json($vendors);
+        const VENDORS = @json($vendors ?? []);
 
         document.addEventListener('DOMContentLoaded', () => {
             // Initialize AOS
@@ -79,43 +79,49 @@
                 offset: 50,
             });
 
-            // Vendor Slider
-            new Swiper('.vendor-slider', {
-                slidesPerView: 1,
-                spaceBetween: 20,
-                navigation: {
-                    nextEl: '.swiper-button-next',
-                    prevEl: '.swiper-button-prev',
-                },
-                breakpoints: {
-                    640: { slidesPerView: 2 },
-                    768: { slidesPerView: 3 },
-                    1024: { slidesPerView: 4 },
-                },
-                loop: true,
-            });
+            // Vendor Slider (only initialize if the element exists)
+            const vendorSlider = document.querySelector('.vendor-slider');
+            if (vendorSlider) {
+                new Swiper('.vendor-slider', {
+                    slidesPerView: 1,
+                    spaceBetween: 20,
+                    navigation: {
+                        nextEl: '.swiper-button-next',
+                        prevEl: '.swiper-button-prev',
+                    },
+                    breakpoints: {
+                        640: { slidesPerView: 2 },
+                        768: { slidesPerView: 3 },
+                        1024: { slidesPerView: 4 },
+                    },
+                    loop: true,
+                });
+            }
 
-            // Portfolio Carousel
-            new Swiper('.portfolio-carousel', {
-                effect: 'coverflow',
-                grabCursor: true,
-                centeredSlides: true,
-                slidesPerView: 'auto',
-                coverflowEffect: {
-                    rotate: 50,
-                    stretch: 0,
-                    depth: 100,
-                    modifier: 1,
-                    slideShadows: true,
-                },
-                autoplay: {
-                    delay: 3000,
-                    disableOnInteraction: false,
-                },
-                loop: true,
-            });
+            // Portfolio Carousel (only initialize if the element exists)
+            const portfolioCarousel = document.querySelector('.portfolio-carousel');
+            if (portfolioCarousel) {
+                new Swiper('.portfolio-carousel', {
+                    effect: 'coverflow',
+                    grabCursor: true,
+                    centeredSlides: true,
+                    slidesPerView: 'auto',
+                    coverflowEffect: {
+                        rotate: 50,
+                        stretch: 0,
+                        depth: 100,
+                        modifier: 1,
+                        slideShadows: true,
+                    },
+                    autoplay: {
+                        delay: 3000,
+                        disableOnInteraction: false,
+                    },
+                    loop: true,
+                });
+            }
 
-            // Hero Parallax
+            // Hero Parallax (only initialize if the element exists)
             const heroBg = document.querySelector('.hero-bg');
             if (heroBg) {
                 window.addEventListener('scroll', () => {

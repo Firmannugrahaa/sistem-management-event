@@ -23,16 +23,15 @@
             @php
                 $companySetting = \App\Models\CompanySetting::first();
             @endphp
-            @if($companySetting && $companySetting->company_logo_path)
-                <a href="/" class="flex items-center">
-                    <img src="{{ asset('storage/' . $companySetting->company_logo_path) }}"
+            <a href="/" class="flex items-center gap-3">
+                @if($companySetting && !empty($companySetting->company_logo_path))
+                    <img src="{{ asset($companySetting->company_logo_path) }}"
                          alt="{{ $companySetting->company_name ?? 'EventScape' }}"
-                         class="h-8 w-auto object-contain mr-2">
-                    <span class="text-xl font-bold text-primary">{{ $companySetting->company_name ?? 'EventScape' }}</span>
-                </a>
-            @else
-                <a href="/" class="text-xl font-bold text-primary">{{ $companySetting->company_name ?? 'EventScape' }}</a>
-            @endif
+                         class="h-10 w-auto object-contain"
+                         onerror="this.style.display='none'">
+                @endif
+                <span class="text-xl font-bold text-primary">{{ $companySetting->company_name ?? 'EventScape' }}</span>
+            </a>
         </div>
         <div class="hidden md:flex space-x-8">
             <a href="#portfolio" class="text-gray-600 hover:text-primary font-medium transition">Portfolio</a>

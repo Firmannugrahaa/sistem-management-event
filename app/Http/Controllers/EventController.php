@@ -31,7 +31,12 @@ class EventController extends Controller
     public function create()
     {
         $venues = Venue::orderBy('name')->get();
-        return view('events.create', compact('venues'));
+        $vendorVenues = Vendor::where('service_type_id', 22) // Service type ID 22 is 'Venue'
+                                ->with(['user', 'services' => function($query) {
+                                    $query->wherePivot('is_available', true);
+                                }])
+                                ->get();
+        return view('events.create', compact('venues', 'vendorVenues'));
     }
 
     /**
@@ -41,7 +46,11 @@ class EventController extends Controller
     {
         $validated = $request->validate([
             'event_name' => 'required|string|max:255',
-            'venue_id' => 'nullable|exists:venues,id', // 'nullable' lebih baik (sesuai migrasi)
+            'venue_type' => 'required|in:none,standard,vendor',
+            'venue_id' => 'nullable|exists:venues,id',
+            'vendor_venue_id' => 'nullable|exists:vendors,id',
+            'vendor_venue_name' => 'nullable|string|max:255',
+            'vendor_venue_price' => 'nullable|numeric|min:0',
             'start_time' => 'required|date',
             'end_time' => 'required|date|after:start_time',
             'description' => 'nullable|string',
@@ -51,7 +60,41 @@ class EventController extends Controller
             'client_address' => 'nullable|string',
         ]);
 
-        $request->user()->events()->create($validated);
+        // Handle venue selection logic
+        $eventData = [
+            'event_name' => $validated['event_name'],
+            'start_time' => $validated['start_time'],
+            'end_time' => $validated['end_time'],
+            'description' => $validated['description'] ?? null,
+            'client_name' => $validated['client_name'] ?? null,
+            'client_phone' => $validated['client_phone'] ?? null,
+            'client_email' => $validated['client_email'] ?? null,
+            'client_address' => $validated['client_address'] ?? null,
+        ];
+
+        // Set venue_id based on venue_type selection
+        if ($validated['venue_type'] === 'standard' && !empty($validated['venue_id'])) {
+            $eventData['venue_id'] = $validated['venue_id'];
+        } elseif ($validated['venue_type'] === 'vendor' && !empty($validated['vendor_venue_id'])) {
+            $eventData['venue_id'] = null; // We'll handle vendor venues differently if needed
+
+            // Create or update a temporary venue record for the vendor venue
+            // Or we can handle it differently based on business logic
+        } else {
+            $eventData['venue_id'] = null; // No venue selected
+        }
+
+        // Create the event
+        $event = $request->user()->events()->create($eventData);
+
+        // If vendor venue is selected, assign the vendor as a venue vendor to the event
+        if ($validated['venue_type'] === 'vendor' && !empty($validated['vendor_venue_id'])) {
+            $event->vendors()->attach($validated['vendor_venue_id'], [
+                'agreed_price' => $validated['vendor_venue_price'] ?? 0,
+                'contract_details' => "Venue: " . ($validated['vendor_venue_name'] ?? 'Vendor Venue'),
+                'status' => 'Confirmed', // or Negotiation based on your business logic
+            ]);
+        }
 
         return redirect()->route('events.index')->with('success', 'Event berhasil dibuat.');
     }
@@ -78,7 +121,27 @@ class EventController extends Controller
         $this->authorize('update', $event);
 
         $venues = Venue::orderBy('name')->get();
-        return view('events.edit', compact('event', 'venues'));
+        $vendorVenues = Vendor::where('service_type_id', 22) // Service type ID 22 is 'Venue'
+                                ->with(['user', 'services' => function($query) {
+                                    $query->wherePivot('is_available', true);
+                                }])
+                                ->get();
+
+        // Determine the current venue type for the event
+        $currentVenueType = 'none';
+        if ($event->venue_id) {
+            $currentVenueType = 'standard';
+        } else {
+            // Check if there's a vendor assigned as venue
+            $vendorVenue = $event->vendors()->whereHas('serviceType', function($q) {
+                $q->where('name', 'Venue');
+            })->first();
+            if ($vendorVenue) {
+                $currentVenueType = 'vendor';
+            }
+        }
+
+        return view('events.edit', compact('event', 'venues', 'vendorVenues', 'currentVenueType'));
     }
 
     /**
@@ -90,7 +153,11 @@ class EventController extends Controller
 
         $validated = $request->validate([
             'event_name' => 'required|string|max:255',
+            'venue_type' => 'required|in:none,standard,vendor',
             'venue_id' => 'nullable|exists:venues,id',
+            'vendor_venue_id' => 'nullable|exists:vendors,id',
+            'vendor_venue_name' => 'nullable|string|max:255',
+            'vendor_venue_price' => 'nullable|numeric|min:0',
             'start_time' => 'required|date',
             'end_time' => 'required|date|after:start_time',
             'description' => 'nullable|string',
@@ -100,7 +167,45 @@ class EventController extends Controller
             'client_address' => 'nullable|string',
         ]);
 
-        $event->update($validated);
+        // Handle venue selection logic
+        $eventData = [
+            'event_name' => $validated['event_name'],
+            'start_time' => $validated['start_time'],
+            'end_time' => $validated['end_time'],
+            'description' => $validated['description'] ?? null,
+            'client_name' => $validated['client_name'] ?? null,
+            'client_phone' => $validated['client_phone'] ?? null,
+            'client_email' => $validated['client_email'] ?? null,
+            'client_address' => $validated['client_address'] ?? null,
+        ];
+
+        // Set venue_id based on venue_type selection
+        if ($validated['venue_type'] === 'standard' && !empty($validated['venue_id'])) {
+            $eventData['venue_id'] = $validated['venue_id'];
+        } else {
+            $eventData['venue_id'] = null; // No standard venue selected
+        }
+
+        // Update the event
+        $event->update($eventData);
+
+        // Remove any existing vendor venue assignments
+        $existingVenueVendors = $event->vendors()->whereHas('serviceType', function($q) {
+            $q->where('name', 'Venue');
+        })->get();
+
+        foreach ($existingVenueVendors as $vendor) {
+            $event->vendors()->detach($vendor->id);
+        }
+
+        // If vendor venue is selected, assign the vendor as a venue vendor to the event
+        if ($validated['venue_type'] === 'vendor' && !empty($validated['vendor_venue_id'])) {
+            $event->vendors()->attach($validated['vendor_venue_id'], [
+                'agreed_price' => $validated['vendor_venue_price'] ?? 0,
+                'contract_details' => "Venue: " . ($validated['vendor_venue_name'] ?? 'Vendor Venue'),
+                'status' => 'Confirmed', // or Negotiation based on your business logic
+            ]);
+        }
 
         return redirect()->route('events.index')->with('success', 'Event berhasil diperbarui.');
     }

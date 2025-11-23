@@ -13,6 +13,7 @@ class CompanySetting extends Model
         'company_email',
         'company_address',
         'company_logo_path',
+        'logo_last_updated_at',
         'tax_number',
         'bank_account_name',
         'bank_account_number',
@@ -34,6 +35,7 @@ class CompanySetting extends Model
         'company_email' => 'string',
         'company_address' => 'string',
         'company_logo_path' => 'string',
+        'logo_last_updated_at' => 'datetime',
         'tax_number' => 'string',
         'bank_account_name' => 'string',
         'bank_account_number' => 'string',
@@ -48,6 +50,48 @@ class CompanySetting extends Model
         'company_number' => 'string',
         'address_details' => 'string',
     ];
+
+    /**
+     * Check if logo can be updated (30 days restriction)
+     * SuperUser can always update regardless of restriction
+     */
+    public function canUpdateLogo($user = null): bool
+    {
+        // SuperUser can always update
+        if ($user && $user->hasRole('SuperUser')) {
+            return true;
+        }
+
+        if (!$this->logo_last_updated_at) {
+            return true;
+        }
+
+        return $this->logo_last_updated_at->addDays(30)->isPast();
+    }
+
+    /**
+     * Get days remaining until logo can be updated
+     * Returns 0 for SuperUser
+     */
+    public function daysUntilLogoCanUpdate($user = null): int
+    {
+        // SuperUser has no restriction
+        if ($user && $user->hasRole('SuperUser')) {
+            return 0;
+        }
+
+        if (!$this->logo_last_updated_at) {
+            return 0;
+        }
+
+        $canUpdateDate = $this->logo_last_updated_at->addDays(30);
+        
+        if ($canUpdateDate->isPast()) {
+            return 0;
+        }
+
+        return now()->diffInDays($canUpdateDate, false);
+    }
 
     public function province(): BelongsTo
     {
