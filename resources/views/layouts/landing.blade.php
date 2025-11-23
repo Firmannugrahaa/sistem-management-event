@@ -41,7 +41,28 @@
         <div class="flex items-center space-x-4">
             @if (Route::has('login'))
                 @auth
-                    <a href="{{ url('/dashboard') }}" class="text-sm text-gray-700 font-medium hover:text-primary transition">Dashboard</a>
+                    @if(auth()->user()->hasRole('Client'))
+                        <!-- Client-specific navigation -->
+                        <a href="{{ route('client.dashboard') }}" class="text-sm text-gray-700 font-medium hover:text-primary transition">Dashboard</a>
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <a href="{{ route('logout') }}"
+                               class="text-sm text-gray-700 font-medium hover:text-primary transition"
+                               onclick="event.preventDefault(); this.closest('form').submit();">
+                                Logout
+                            </a>
+                        </form>
+                    @else
+                        <a href="{{ url('/dashboard') }}" class="text-sm text-gray-700 font-medium hover:text-primary transition">Dashboard</a>
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <a href="{{ route('logout') }}"
+                               class="text-sm text-gray-700 font-medium hover:text-primary transition"
+                               onclick="event.preventDefault(); this.closest('form').submit();">
+                                Logout
+                            </a>
+                        </form>
+                    @endif
                 @else
                     <a href="{{ route('login') }}" class="text-sm text-gray-600 font-medium hover:text-primary transition">Log in</a>
 

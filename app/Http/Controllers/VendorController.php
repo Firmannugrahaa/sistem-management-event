@@ -52,6 +52,18 @@ class VendorController extends Controller
      */
     public function show(Vendor $vendor)
     {
+        // For guests (not logged in), redirect to login
+        if (!auth()->check()) {
+            session(['intended_url' => request()->url()]); // Store intended URL
+            return redirect()->route('login')->with('message', 'Silakan login terlebih dahulu untuk melihat detail vendor.');
+        }
+
+        // For non-Client users, redirect to profile edit
+        $user = auth()->user();
+        if (!$user->hasRole('Client')) {
+            return redirect()->route('profile.edit')->with('error', 'Hanya user dengan role Client yang dapat mengakses detail vendor untuk booking.');
+        }
+
         // In real application, this would come from reviews/ratings system
         $vendorRatings = [
             ['user' => 'Budi Santoso', 'rating' => 5, 'comment' => 'Layanan sangat profesional dan berkualitas tinggi. Akan menggunakan jasa mereka lagi di masa depan.', 'date' => '2024-11-15'],

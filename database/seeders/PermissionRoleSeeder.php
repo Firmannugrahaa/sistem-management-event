@@ -14,16 +14,24 @@ class PermissionRoleSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get the roles and permissions
-        $superUserRole = Role::where('name', 'Super User')->first();
-        $ownerRole = Role::where('name', 'Owner')->first();
-        $accessSettingsPermission = Permission::where('name', 'access-settings')->first();
-        
+        // Reset cached roles and permissions
+        app()['Spatie\Permission\PermissionRegistrar']->forgetCachedPermissions();
+
+        // Get or create the roles and permissions to ensure they exist
+        $superUserRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'SuperUser']);
+        $ownerRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Owner']);
+
+        // Get or create the access-settings permission
+        $accessSettingsPermission = \Spatie\Permission\Models\Permission::firstOrCreate(
+            ['name' => 'access-settings'],
+            ['guard_name' => 'web']
+        );
+
         // Assign the access-settings permission to Super User and Owner roles
         if ($superUserRole && $accessSettingsPermission) {
             $superUserRole->givePermissionTo($accessSettingsPermission);
         }
-        
+
         if ($ownerRole && $accessSettingsPermission) {
             $ownerRole->givePermissionTo($accessSettingsPermission);
         }

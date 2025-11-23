@@ -33,6 +33,11 @@ class PasswordChangeController extends Controller
             'must_change_password' => false,
         ]);
 
-        return redirect()->route('dashboard')->with('success', 'Your password has been changed successfully.');
+        // Role-based redirection after password change
+        if ($user->hasRole('Client')) {
+            return redirect()->route('landing.page')->with('success', 'Your password has been changed successfully.');
+        } else {
+            return redirect()->route('dashboard')->with('success', 'Your password has been changed successfully.');
+        }
     }
 }

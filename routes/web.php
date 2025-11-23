@@ -19,8 +19,29 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [App\Http\Controllers\LandingPageController::class, 'index'])->name('landing.page');
 
+
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])->name('dashboard');
+
+// Client landing page route (vendor and venue selection)
+Route::get('/client/landing', [App\Http\Controllers\Client\ClientLandingController::class, 'index'])
+    ->middleware(['auth', 'verified', 'role:Client'])->name('client.landing');
+
+// Client order review route
+Route::get('/client/order/review', [App\Http\Controllers\Client\ClientOrderController::class, 'review'])
+    ->middleware(['auth', 'verified', 'role:Client'])->name('client.order.review');
+
+// Client order selections route
+Route::post('/client/order/store-selections', [App\Http\Controllers\Client\ClientOrderController::class, 'storeSelections'])
+    ->middleware(['auth', 'verified', 'role:Client'])->name('client.order.store.selections');
+
+// Client order confirmation route
+Route::post('/client/order/confirm', [App\Http\Controllers\Client\ClientOrderController::class, 'confirm'])
+    ->middleware(['auth', 'verified', 'role:Client'])->name('client.order.confirm');
+
+// Client dashboard route
+Route::get('/client/dashboard', [App\Http\Controllers\Client\ClientDashboardController::class, 'index'])
+    ->middleware(['auth', 'verified', 'role:Client'])->name('client.dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

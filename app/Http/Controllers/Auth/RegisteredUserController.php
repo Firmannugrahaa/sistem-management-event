@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
+use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
 {
@@ -48,10 +49,23 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // Assign 'Client' role to newly registered users
+        // Create the role if it doesn't exist
+        $clientRole = Role::firstOrCreate(['name' => 'Client']);
+        $user->assignRole($clientRole);
+
+        // Create client profile automatically
+        $user->clientProfile()->create();
+
         event(new Registered($user));
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        // Redirect new client users to the landing page instead of dashboard
+        if ($user->hasRole('Client')) {
+            return redirect()->route('landing.page');
+        } else {
+            return redirect()->route('dashboard');
+        }
     }
 }

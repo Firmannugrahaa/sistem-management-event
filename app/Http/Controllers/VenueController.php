@@ -52,7 +52,20 @@ class VenueController extends Controller
      */
     public function show(Venue $venue)
     {
-        return redirect()->route('venues.edit', $venue->id);
+        // For guests (not logged in), redirect to login
+        if (!auth()->check()) {
+            session(['intended_url' => request()->url()]); // Store intended URL
+            return redirect()->route('login')->with('message', 'Silakan login terlebih dahulu untuk melihat detail venue.');
+        }
+
+        // For non-Client users, redirect to profile edit
+        $user = auth()->user();
+        if (!$user->hasRole('Client')) {
+            return redirect()->route('profile.edit')->with('error', 'Hanya user dengan role Client yang dapat mengakses detail venue untuk booking.');
+        }
+
+        // For Client users, show venue details page
+        return view('venues.show', compact('venue'));
     }
 
     /**

@@ -16,6 +16,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             SuperUserSeeder::class,
             PermissionSeeder::class,
+            PermissionRoleSeeder::class,  // Add this to assign permissions to roles
+            CompanySettingSeeder::class,  // Add this to ensure company settings exist
             RoleSeeder::class,
             AssignRolesSeeder::class,
             ProvincesSeeder::class,
