@@ -6,34 +6,53 @@ use Illuminate\Http\Request;
 use App\Models\Portfolio;
 use App\Models\Vendor;
 use App\Models\Service;
+use App\Models\Venue;
 use App\Models\CompanySetting;
 
 class LandingPageController extends Controller
 {
     public function index()
     {
-        // Mengambil data portfolio, vendor, dan layanan
+        // Check if user is authenticated
+        $user = auth()->user();
+
+        // For authenticated clients, we might want to show additional content
+        if ($user && $user->hasRole('Client')) {
+            // Client-specific enhancements can go here
+            $showClientDashboardAccess = true;
+        } else {
+            $showClientDashboardAccess = false;
+        }
+
+        // Mengambil data portfolio, venue, dan vendor tambahan
         $portfolios = Portfolio::limit(6)->get();
-        $vendors = Vendor::with(['user', 'serviceType'])
+        $venues = Venue::limit(8)->get();
+        // Get additional vendors for the second vendor section (replacing services)
+        $additionalVendors = Vendor::with(['user', 'serviceType'])
                         ->whereNotNull('user_id')
                         ->whereHas('user', function($query) {
                             $query->whereHas('roles', function($roleQuery) {
                                 $roleQuery->where('name', 'Vendor');
                             });
                         })
-                        ->limit(8)
+                        ->offset(8) // Skip the first 8 vendors to show different ones
+                        ->limit(6)
                         ->get()
                         ->map(function ($vendor) {
-                            // Add a placeholder rating - this can be updated when a real rating system is implemented
+                            // Add placeholder rating for display purposes
                             $vendor->average_rating = 4.5; // Placeholder average rating
                             $vendor->total_reviews = rand(10, 100); // Placeholder number of reviews
+
+                            // Ensure contact information is available
+                            $vendor->display_name = $vendor->user ? $vendor->user->name : $vendor->contact_person;
+                            $vendor->display_category = $vendor->serviceType ? $vendor->serviceType->name : $vendor->category;
+
                             return $vendor;
                         });
-        $services = Service::limit(6)->get();
 
         // Ambil data company settings
         $companySetting = CompanySetting::first();
 
-        return view('landing-page.index', compact('portfolios', 'vendors', 'services', 'companySetting'));
+        return view('landing-page.index', compact('portfolios', 'venues', 'additionalVendors', 'companySetting', 'showClientDashboardAccess'));
     }
 }

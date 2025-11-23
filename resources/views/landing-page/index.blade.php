@@ -53,12 +53,21 @@
         <div class="container mx-auto px-6 relative z-20">
             <div class="flex flex-col md:flex-row items-center">
                 <div class="md:w-1/2 mb-12 md:mb-0">
-                    <h1 class="text-4xl md:text-5xl font-bold mb-6 leading-tight drop-shadow-lg">Wujudkan Acara Impian Anda dengan Profesional</h1>
-                    <p class="text-xl mb-8 max-w-lg drop-shadow-md">Layanan lengkap untuk semua kebutuhan event Anda dengan vendor terpercaya dan layanan berkualitas</p>
-                    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                        <a href="#services" class="bg-white text-primary px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition shadow-lg text-center">Lihat Layanan</a>
-                        <a href="#vendors" class="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-primary transition text-center">Jelajahi Vendor</a>
-                    </div>
+                    @if(auth()->check() && auth()->user()->hasRole('Client'))
+                        <h1 class="text-4xl md:text-5xl font-bold mb-6 leading-tight drop-shadow-lg">Selamat Datang, {{ auth()->user()->name }}!</h1>
+                        <p class="text-xl mb-8 max-w-lg drop-shadow-md">Mulai rencanakan acara impian Anda dengan layanan lengkap, vendor terpercaya, dan kemudahan dalam satu platform</p>
+                        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                            <a href="{{ route('events.create') }}" class="bg-white text-primary px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition shadow-lg text-center">Buat Event Baru</a>
+                            <a href="{{ route('client.dashboard') }}" class="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-primary transition text-center">Lihat Dashboard</a>
+                        </div>
+                    @else
+                        <h1 class="text-4xl md:text-5xl font-bold mb-6 leading-tight drop-shadow-lg">Wujudkan Acara Impian Anda dengan Profesional</h1>
+                        <p class="text-xl mb-8 max-w-lg drop-shadow-md">Layanan lengkap untuk semua kebutuhan event Anda dengan vendor terpercaya dan layanan berkualitas</p>
+                        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                            <a href="#venues" class="bg-white text-primary px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition shadow-lg text-center">Jelajahi Venue</a>
+                            <a href="#additional-vendors" class="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-primary transition text-center">Lihat Vendor</a>
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -132,38 +141,34 @@
         </div>
     </section>
 
-    <!-- Vendors Section -->
-    <section id="vendors" class="py-20 bg-white">
+    <!-- Venues Section -->
+    <section id="venues" class="py-20 bg-white">
         <div class="container mx-auto px-6">
             <!-- Decorative header image -->
             <div class="text-center mb-10">
-                <img src="https://images.unsplash.com/photo-1512485694743-9c9538b4e4e7?auto=format&fit=crop&w=800&h=200&q=80"
-                     alt="Event Vendors"
+                <img src="https://images.unsplash.com/photo-1512869251363-8e62799c3f41?auto=format&fit=crop&w=800&h=200&q=80"
+                     alt="Event Venues"
                      class="mx-auto rounded-xl shadow-md">
             </div>
 
             <div class="text-center mb-16">
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Vendor Tersedia</h2>
-                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Partner terpercaya kami yang siap membantu mewujudkan acara Anda</p>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Venue Tersedia</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Pilihan venue terbaik untuk mewujudkan acara Anda</p>
             </div>
 
             <!-- Carousel Container -->
             <div class="relative" x-data="{
                     currentIndex: 0,
-                    vendors: @php echo json_encode($vendors->map(function($vendor) {
-                        // Prepare vendor data with all necessary information
-                        $vendorData = [
-                            'id' => $vendor->id,
-                            'name' => $vendor->user ? $vendor->user->name : $vendor->contact_person,
-                            'category' => $vendor->serviceType ? $vendor->serviceType->name : $vendor->category,
-                            'phone_number' => $vendor->phone_number,
-                            'image_url' => $vendor->user && $vendor->user->profile_photo_path
-                                ? asset('storage/' . $vendor->user->profile_photo_path)
-                                : (isset($vendor->image_url) ? $vendor->image_url : null),
-                            'average_rating' => $vendor->average_rating ?? 0,
-                            'total_reviews' => $vendor->total_reviews ?? 0
+                    venues: @php echo json_encode($venues->map(function($venue) {
+                        // Prepare venue data with all necessary information
+                        $venueData = [
+                            'id' => $venue->id,
+                            'name' => $venue->name,
+                            'address' => $venue->address,
+                            'price' => $venue->price,
+                            'capacity' => $venue->capacity,
                         ];
-                        return $vendorData;
+                        return $venueData;
                     })->toArray(), JSON_HEX_TAG | JSON_HEX_AMP) @endphp,
                     itemsPerPage: 4
                 }"
@@ -177,64 +182,50 @@
                     updateItemsPerPage();
                     window.addEventListener('resize', updateItemsPerPage);
                     // Ensure initial state is valid
-                    if (vendors.length === 0) {
+                    if (venues.length === 0) {
                         itemsPerPage = 1;
                     }
                  ">
-                <!-- Vendor Cards Carousel -->
+                <!-- Venue Cards Carousel -->
                 <div class="overflow-hidden" style="min-height: 350px;">
-                    <template x-if="vendors.length > 0">
+                    <template x-if="venues.length > 0">
                         <div class="flex transition-transform duration-500 ease-in-out" :style="`transform: translateX(-${currentIndex * (100 / itemsPerPage)}%);`">
-                            <template x-for="(vendor, index) in vendors" :key="index">
+                            <template x-for="(venue, index) in venues" :key="index">
                                 <div class="flex-shrink-0 px-3" :style="`width: ${100 / itemsPerPage}%`">
                                     <div class="bg-gray-50 rounded-2xl p-6 text-center hover:shadow-xl transition-all duration-300 border border-gray-100 h-full">
                                         <div class="w-20 h-20 mx-auto mb-5 rounded-full overflow-hidden">
-                                            <img :src="vendor.image_url || 'https://ui-avatars.com/api/?name=' + (vendor.name || 'Vendor') + '&background=0D8ABC&color=fff'"
-                                                 :alt="vendor.name || 'Vendor'"
+                                            <img src="https://images.unsplash.com/photo-1512869251363-8e62799c3f41?auto=format&fit=crop&w=200&h=200&q=80"
+                                                 :alt="venue.name || 'Venue'"
                                                  class="w-full h-full object-cover"
-                                                 onerror="this.src='https://ui-avatars.com/api/?name=' + (vendor.name || 'Vendor') + '&background=0D8ABC&color=fff'; this.onerror=null;">
+                                                 onerror="this.src='https://ui-avatars.com/api/?name=' + (venue.name || 'Venue') + '&background=0D8ABC&color=fff'; this.onerror=null;">
                                         </div>
 
-                                        <!-- Rating Display -->
-                                        <div class="flex justify-center items-center mb-2">
-                                            <div class="flex">
-                                                <template x-for="i in 5">
-                                                    <svg :class="{'text-yellow-400': i <= Math.floor(vendor.average_rating), 'text-gray-300': i > Math.floor(vendor.average_rating)}"
-                                                         class="w-4 h-4 fill-current"
-                                                         xmlns="http://www.w3.org/2000/svg"
-                                                         viewBox="0 0 24 24">
-                                                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                                                    </svg>
-                                                </template>
-                                            </div>
-                                            <span class="ml-1 text-xs text-gray-500" x-text="'(' + vendor.total_reviews + ')'"></span>
-                                        </div>
-
-                                        <h3 class="text-lg font-bold text-gray-800 mb-2 truncate" x-text="vendor.name || 'Vendor'">Vendor</h3>
-                                        <p class="text-sm text-primary font-medium mb-2 truncate" x-text="vendor.category || 'Service Type'"></p>
-                                        <p class="text-xs text-gray-500 mb-3" x-text="vendor.phone_number || 'No phone'"></p>
+                                        <h3 class="text-lg font-bold text-gray-800 mb-2 truncate" x-text="venue.name || 'Venue'">Venue</h3>
+                                        <p class="text-sm text-gray-600 mb-2 truncate" x-text="venue.address || 'Address'"></p>
+                                        <p class="text-sm text-primary font-medium mb-2" x-text="'Rp ' + venue.price?.toLocaleString() || 'Price'"></p>
+                                        <p class="text-xs text-gray-500 mb-3" x-text="'Capacity: ' + venue.capacity + ' people'"></p>
                                         <div class="flex justify-center mt-2">
-                                            <a :href="'/vendors/' + vendor.id" class="text-sm text-primary font-medium hover:text-blue-800 transition whitespace-nowrap">Lihat Profil →</a>
+                                            <a :href="'/venues/' + venue.id" class="text-sm text-primary font-medium hover:text-blue-800 transition whitespace-nowrap">Lihat Detail →</a>
                                         </div>
                                     </div>
                                 </div>
                             </template>
                         </div>
                     </template>
-                    <template x-if="vendors.length === 0">
+                    <template x-if="venues.length === 0">
                         <div class="text-center py-16">
                             <div class="mx-auto w-24 h-24 mb-6 opacity-50">
-                                <img src="https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&w=200&h=200&q=80"
-                                     alt="No vendors available"
+                                <img src="https://images.unsplash.com/photo-1584285418934-0379b7b8e6d0?auto=format&fit=crop&w=200&h=200&q=80"
+                                     alt="No venues available"
                                      class="w-full h-full object-cover rounded-full">
                             </div>
-                            <p class="text-gray-500 text-lg">Belum ada vendor tersedia</p>
+                            <p class="text-gray-500 text-lg">Belum ada venue tersedia</p>
                         </div>
                     </template>
                 </div>
 
                 <!-- Navigation Arrows -->
-                <template x-if="vendors.length > 0">
+                <template x-if="venues.length > 0">
                 <div>
                     <button @click="if(currentIndex > 0) currentIndex--"
                         :disabled="currentIndex === 0"
@@ -244,8 +235,8 @@
                         </svg>
                     </button>
 
-                    <button @click="if(currentIndex < Math.ceil(vendors.length / itemsPerPage) - 1) currentIndex++"
-                        :disabled="currentIndex >= Math.ceil(vendors.length / itemsPerPage) - 1"
+                    <button @click="if(currentIndex < Math.ceil(venues.length / itemsPerPage) - 1) currentIndex++"
+                        :disabled="currentIndex >= Math.ceil(venues.length / itemsPerPage) - 1"
                         class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-6 bg-white rounded-full p-3 shadow-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed z-10">
                         <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -255,9 +246,9 @@
                 </template>
 
                 <!-- Pagination Indicators -->
-                <template x-if="vendors.length > 0">
+                <template x-if="venues.length > 0">
                 <div class="flex justify-center mt-10 space-x-2">
-                    <template x-for="i in Math.ceil(vendors.length / itemsPerPage)" :key="i">
+                    <template x-for="i in Math.ceil(venues.length / itemsPerPage)" :key="i">
                         <button
                             @click="currentIndex = i - 1"
                             :class="{
@@ -272,76 +263,78 @@
                 </template>
             </div>
 
-            @if(count($vendors) > 0)
+            @if(count($venues) > 0)
                 <div class="text-center mt-16">
-                    <a href="{{ route('vendors.index') }}" class="inline-block bg-primary text-white px-8 py-4 rounded-lg font-medium hover:bg-blue-800 transition shadow-lg">Lihat Semua Vendor</a>
+                    <a href="{{ route('venues.index') }}" class="inline-block bg-primary text-white px-8 py-4 rounded-lg font-medium hover:bg-blue-800 transition shadow-lg">Lihat Semua Venue</a>
                 </div>
             @endif
         </div>
     </section>
 
-    <!-- Services Section -->
-    <section id="services" class="py-20 bg-gradient-to-b from-white to-gray-50">
+    <!-- Additional Vendors Section -->
+    <section id="additional-vendors" class="py-20 bg-gradient-to-b from-white to-gray-50">
         <div class="container mx-auto px-6">
             <!-- Decorative header image -->
             <div class="text-center mb-10">
-                <img src="https://images.unsplash.com/photo-1513542789411-b6a5bdc1d6d7?auto=format&fit=crop&w=800&h=200&q=80"
-                     alt="Event Services"
+                <img src="https://images.unsplash.com/photo-1512485694743-9c9538b4e4e7?auto=format&fit=crop&w=800&h=200&q=80"
+                     alt="Additional Vendors"
                      class="mx-auto rounded-xl shadow-md">
             </div>
 
             <div class="text-center mb-16">
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Layanan Tersedia</h2>
-                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Berbagai pilihan layanan untuk kebutuhan event Anda</p>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Vendor Tersedia Lainnya</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Lebih banyak partner terpercaya kami yang siap membantu mewujudkan acara Anda</p>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                @forelse($services as $service)
-                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                        <img src="{{ $service->image ? asset('storage/' . $service->image) : 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&h=400&q=80' }}"
-                             alt="{{ $service->name }}"
-                             class="w-full h-52 object-cover">
+                @forelse($additionalVendors as $vendor)
+                    <div class="bg-gray-50 rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
                         <div class="p-7">
                             <div class="flex justify-between items-start mb-4">
-                                <span class="inline-block bg-accent-green/10 text-accent-green px-3 py-1 rounded-full text-sm font-medium">{{ $service->category }}</span>
-                                @if($service->is_available)
-                                    <span class="text-sm text-accent-green font-medium">Tersedia</span>
-                                @else
-                                    <span class="text-sm text-red-500 font-medium">Tidak Tersedia</span>
-                                @endif
+                                <span class="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">{{ $vendor->display_category }}</span>
+                                <div class="flex items-center">
+                                    <svg class="w-4 h-4 text-yellow-400 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                    </svg>
+                                    <span class="ml-1 text-sm text-gray-600">{{ number_format($vendor->average_rating, 1) }}</span>
+                                </div>
                             </div>
-                            <h3 class="text-xl font-bold text-gray-800 mb-3">{{ $service->name }}</h3>
-                            <p class="text-gray-600 mb-6">{{ \Illuminate\Support\Str::limit($service->description, 100) }}</p>
+                            <div class="flex items-center mb-4">
+                                <div class="w-16 h-16 rounded-full overflow-hidden mr-4">
+                                    <img src="{{ $vendor->user && $vendor->user->profile_photo_path ? asset('storage/' . $vendor->user->profile_photo_path) : 'https://ui-avatars.com/api/?name=' . urlencode($vendor->display_name) . '&background=0D8ABC&color=fff' }}"
+                                         alt="{{ $vendor->display_name }}"
+                                         class="w-full h-full object-cover"
+                                         onerror="this.src='https://ui-avatars.com/api/?name=' + encodeURIComponent('{{ $vendor->display_name }}') + '&background=0D8ABC&color=fff'; this.onerror=null;">
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-800">{{ $vendor->display_name }}</h3>
+                                    <p class="text-gray-600 text-sm">{{ $vendor->phone_number }}</p>
+                                </div>
+                            </div>
+                            <p class="text-gray-600 mb-6">{{ $vendor->contact_person ? 'Contact Person: ' . $vendor->contact_person : 'Vendor Profesional' }}</p>
                             <div class="flex justify-between items-center mb-6">
-                                <span class="text-2xl font-bold text-primary">Mulai dari Rp {{ number_format($service->price, 0, ',', '.') }}</span>
-                                <span class="text-gray-500">{{ $service->duration }} jam</span>
+                                <span class="text-sm text-gray-500">Reviews: {{ $vendor->total_reviews }}</span>
                             </div>
-                            @if($service->is_available)
-                                <div class="w-full">
-                                    <a href="#" class="w-full block text-center bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-800 transition">Pesan Sekarang</a>
-                                </div>
-                            @else
-                                <div class="w-full">
-                                    <span class="w-full block text-center bg-gray-200 text-gray-500 px-6 py-3 rounded-lg font-medium">Tidak Tersedia</span>
-                                </div>
-                            @endif
+                            <div class="w-full">
+                                <a href="/vendors/{{ $vendor->id }}" class="w-full block text-center bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-800 transition">Lihat Profil</a>
+                            </div>
                         </div>
                     </div>
                 @empty
                     <div class="col-span-full text-center py-16">
                         <div class="mx-auto w-24 h-24 mb-6 opacity-50">
-                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&h=200&q=80"
-                                 alt="No services available"
+                            <img src="https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&w=200&h=200&q=80"
+                                 alt="No additional vendors available"
                                  class="w-full h-full object-cover rounded-full">
                         </div>
-                        <p class="text-gray-500 text-lg">Belum ada layanan tersedia</p>
+                        <p class="text-gray-500 text-lg">Belum ada vendor tambahan tersedia</p>
                     </div>
                 @endforelse
             </div>
-            
-            @if(count($services) > 0)
+
+            @if(count($additionalVendors) > 0)
                 <div class="text-center mt-16">
-                    <a href="#" class="inline-block bg-primary text-white px-8 py-4 rounded-lg font-medium hover:bg-blue-800 transition shadow-lg">Lihat Semua Layanan</a>
+                    <a href="{{ route('vendors.index') }}" class="inline-block bg-primary text-white px-8 py-4 rounded-lg font-medium hover:bg-blue-800 transition shadow-lg">Lihat Semua Vendor</a>
                 </div>
             @endif
         </div>

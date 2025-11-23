@@ -6,6 +6,7 @@ use App\Http\Middleware\CheckSuperUser;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
+use Spatie\Permission\PermissionRegistrar;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -23,6 +24,7 @@ class AuthServiceProvider extends ServiceProvider
         'App\Models\Vendor' => 'App\Policies\VendorPolicy',
         'App\Models\Voucher' => 'App\Policies\VoucherPolicy',
         'App\Models\Venue' => 'App\Policies\VenuePolicy',
+        'App\Models\CompanySetting' => 'App\Policies\CompanySettingPolicy',
     ];
 
     /**
@@ -40,8 +42,17 @@ class AuthServiceProvider extends ServiceProvider
             }
         });
         
-        // Define gate for accessing settings - checks permission rather than role directly
+        // Define gate for accessing settings - checks if user has the specific permission, is SuperUser, or is Owner
         Gate::define('access-settings', function ($user) {
+            // SuperUser should always have access
+            if ($user->hasRole('SuperUser')) {
+                return true;
+            }
+            // Owner should have access to settings too
+            if ($user->hasRole('Owner')) {
+                return true;
+            }
+            // Check if user has the specific access-settings permission
             return $user->can('access-settings');
         });
     }

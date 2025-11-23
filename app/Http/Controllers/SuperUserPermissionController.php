@@ -27,20 +27,27 @@ class SuperUserPermissionController extends Controller
     
     public function update(Request $request)
     {
-        DB::transaction(function () use ($request) {
+        try {
             $roles = Role::where('name', '!=', 'SuperUser')->get();
 
             foreach ($roles as $role) {
                 $permissionIds = $request->get($role->name, []);
+
+                // Validate that the permission IDs actually exist
                 $permissions = Permission::whereIn('id', $permissionIds)->get();
+
+                // Sync the permissions with the role (this replaces all existing permissions)
                 $role->syncPermissions($permissions);
-
-                // Clear the permission cache for this role to ensure changes take effect immediately
-                app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
             }
-        });
 
-        return redirect()->route('superuser.permissions.index')->with('status', 'Permissions updated successfully!');
+            // Clear the entire permission cache to ensure all changes take effect immediately
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+            return redirect()->route('superuser.permissions.index')->with('status', 'Permissions updated successfully!');
+        } catch (\Exception $e) {
+            \Log::error('Error updating permissions: ' . $e->getMessage());
+            return redirect()->route('superuser.permissions.index')->with('error', 'Failed to update permissions: ' . $e->getMessage());
+        }
     }
     
     public function debug()
