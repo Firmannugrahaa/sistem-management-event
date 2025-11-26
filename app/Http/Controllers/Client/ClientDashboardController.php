@@ -3,58 +3,123 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
-use App\Models\Event;
-use App\Models\Venue;
-use App\Models\Vendor;
-use App\Models\Invoice;
+use App\Models\ClientRequest;
+use App\Models\LeadRecommendation;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ClientDashboardController extends Controller
 {
+    /**
+     * Client Dashboard - List of Requests
+     */
     public function index()
     {
-        $user = Auth::user();
+        $requests = ClientRequest::where('user_id', Auth::id())
+            ->with(['recommendations' => function($q) {
+                $q->latest();
+            }])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-        // Get client's events
-        $events = Event::where('user_id', $user->id)->latest()->get();
-        $eventCount = $events->count();
+        return view('client.dashboard.index', compact('requests'));
+    }
 
-        // Get events by status
-        $runningEvents = Event::where('user_id', $user->id)
-                              ->whereIn('status', ['running', 'active', 'in_progress'])
-                              ->get();
-        $completedEvents = Event::where('user_id', $user->id)
-                                ->whereIn('status', ['completed', 'finished', 'done'])
-                                ->get();
-        $cancelledEvents = Event::where('user_id', $user->id)
-                                ->whereIn('status', ['cancelled', 'canceled', 'batal'])
-                                ->get();
-        $pendingEvents = Event::where('user_id', $user->id)
-                              ->whereIn('status', ['pending', 'planned', 'upcoming'])
-                              ->get();
+    /**
+     * Show Request Detail
+     */
+    public function show(ClientRequest $clientRequest)
+    {
+        // Security: Ensure this request belongs to the logged-in user
+        if ($clientRequest->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized');
+        }
 
-        // Get available venues for selection
-        $venues = Venue::all();
+        $clientRequest->load(['recommendations.items', 'event']);
 
-        // Get available vendors for selection
-        $vendors = Vendor::all();
+        return view('client.dashboard.show', compact('clientRequest'));
+    }
 
-        // Check if the client has events that need payment
-        $pendingInvoices = Invoice::whereHas('event', function($query) use ($user) {
-            $query->where('user_id', $user->id);
-        })->where('status', 'pending')->get();
+    /**
+     * Show Recommendation Detail
+     */
+    public function showRecommendation(LeadRecommendation $recommendation)
+    {
+        // Security check
+        if ($recommendation->clientRequest->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized');
+        }
 
-        return view('client.dashboard', compact(
-            'events',
-            'eventCount',
-            'runningEvents',
-            'completedEvents',
-            'cancelledEvents',
-            'pendingEvents',
-            'venues',
-            'vendors',
-            'pendingInvoices'
-        ));
+        // Only allow viewing if sent
+        if ($recommendation->status === 'draft') {
+            abort(404);
+        }
+
+        $recommendation->load(['items', 'creator']);
+
+        return view('client.dashboard.recommendation', compact('recommendation'));
+    }
+
+    /**
+     * Respond to Recommendation (Accept/Reject)
+     */
+    public function respondRecommendation(Request $request, LeadRecommendation $recommendation)
+    {
+        if ($recommendation->clientRequest->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'action' => 'required|in:accept,reject,revision',
+            'feedback' => 'nullable|string|required_if:action,reject,revision',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $statusMap = [
+                'accept' => 'accepted',
+                'reject' => 'rejected',
+                'revision' => 'revision_requested',
+            ];
+
+            $newStatus = $statusMap[$validated['action']];
+
+            $recommendation->update([
+                'status' => $newStatus,
+                'responded_at' => now(),
+                'client_feedback' => $validated['feedback'] ?? null,
+            ]);
+
+            // Update Lead Status based on action
+            $clientRequest = $recommendation->clientRequest;
+            
+            if ($newStatus === 'accepted') {
+                $clientRequest->update(['detailed_status' => 'approved']);
+                // Notify Admin: Recommendation Accepted!
+            } elseif ($newStatus === 'revision_requested') {
+                $clientRequest->update(['detailed_status' => 'revision_requested']);
+                // Notify Admin: Revision Requested
+            } elseif ($newStatus === 'rejected') {
+                $clientRequest->update(['detailed_status' => 'rejected']);
+            }
+
+            ActivityLog::log(
+                'client_response',
+                $clientRequest,
+                "Client responded to recommendation '{$recommendation->title}': " . ucfirst($validated['action']),
+                ['feedback' => $validated['feedback'] ?? null]
+            );
+
+            DB::commit();
+
+            return back()->with('success', 'Your response has been submitted successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Failed to submit response.');
+        }
     }
 }

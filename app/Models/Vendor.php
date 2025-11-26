@@ -61,8 +61,9 @@ class Vendor extends Model
     // Relasi Many-to-Many: Vendor bisa menyediakan banyak layanan
     public function services(): BelongsToMany
     {
-        return $this->belongsToMany(VenueService::class, 'vendor_venue_services', 'vendor_id', 'venue_service_id')
-            ->withPivot('price', 'description');
+        return $this->belongsToMany(Service::class, 'vendor_services')
+            ->withPivot('price', 'description', 'is_available')
+            ->withTimestamps();
     }
 
     // Relasi One-to-Many: Vendor memiliki banyak portfolio

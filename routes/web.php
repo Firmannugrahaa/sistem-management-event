@@ -23,6 +23,11 @@ Route::get('/', [App\Http\Controllers\LandingPageController::class, 'index'])->n
 Route::get('/vendor/{id}/profile', [\App\Http\Controllers\VendorBusinessProfileController::class, 'show'])
     ->name('vendor.profile.show');
 
+// Public Booking Form Routes (No Auth Required)
+Route::get('/book-now', [\App\Http\Controllers\Public\PublicBookingController::class, 'showForm'])
+    ->name('public.booking.form');
+Route::post('/book-now', [\App\Http\Controllers\Public\PublicBookingController::class, 'storeBooking'])
+    ->name('public.booking.store');
 
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -76,6 +81,42 @@ Route::middleware('auth')->group(function () {
 
     // Combined Team and Vendor Management
     Route::get('/manage-team-vendor', [TeamVendorController::class, 'index'])->name('team-vendor.index');
+
+    // Client Requests / Leads Management
+    Route::resource('client-requests', App\Http\Controllers\ClientRequestController::class);
+    Route::post('client-requests/{clientRequest}/update-status', [App\Http\Controllers\ClientRequestController::class, 'updateStatus'])
+        ->name('client-requests.update-status');
+    Route::post('client-requests/{clientRequest}/assign-staff', [App\Http\Controllers\ClientRequestController::class, 'assignStaff'])
+        ->name('client-requests.assign-staff');
+    Route::get('client-requests/{clientRequest}/convert-to-event', [App\Http\Controllers\ClientRequestController::class, 'convertToEvent'])
+        ->name('client-requests.convert-to-event');
+
+    // Recommendation System
+    Route::get('client-requests/{clientRequest}/recommendations/create', [App\Http\Controllers\RecommendationController::class, 'create'])
+        ->name('recommendations.create');
+    Route::post('client-requests/{clientRequest}/recommendations', [App\Http\Controllers\RecommendationController::class, 'store'])
+        ->name('recommendations.store');
+    Route::get('recommendations/{recommendation}', [App\Http\Controllers\RecommendationController::class, 'show'])
+        ->name('recommendations.show');
+    Route::post('recommendations/{recommendation}/send', [App\Http\Controllers\RecommendationController::class, 'send'])
+        ->name('recommendations.send');
+
+    // Trash Management (SuperUser Only)
+    Route::middleware('role:SuperUser')->prefix('admin/trash')->name('admin.trash.')->group(function () {
+        Route::get('/', [App\Http\Controllers\TrashController::class, 'index'])->name('index');
+        Route::get('/client-requests', [App\Http\Controllers\TrashController::class, 'clientRequests'])->name('client-requests');
+        Route::post('/client-requests/{id}/restore', [App\Http\Controllers\TrashController::class, 'restoreClientRequest'])->name('restore-client-request');
+        Route::delete('/client-requests/{id}/force-delete', [App\Http\Controllers\TrashController::class, 'forceDeleteClientRequest'])->name('force-delete-client-request');
+        Route::post('/restore-bulk', [App\Http\Controllers\TrashController::class, 'restoreBulk'])->name('restore-bulk');
+    });
+
+    // Client Portal (For Clients)
+    Route::middleware('role:User')->prefix('portal')->name('client.')->group(function () {
+        Route::get('/dashboard', [App\Http\Controllers\Client\ClientDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/requests/{clientRequest}', [App\Http\Controllers\Client\ClientDashboardController::class, 'show'])->name('requests.show');
+        Route::get('/recommendations/{recommendation}', [App\Http\Controllers\Client\ClientDashboardController::class, 'showRecommendation'])->name('recommendations.show');
+        Route::post('/recommendations/{recommendation}/respond', [App\Http\Controllers\Client\ClientDashboardController::class, 'respondRecommendation'])->name('recommendations.respond');
+    });
 
     // User-facing Invoice History
     Route::get('/my-invoices', [InvoiceController::class, 'index'])->name('invoices.index');

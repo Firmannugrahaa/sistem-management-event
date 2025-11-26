@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ClientRequest;
 use App\Models\Event;
 use App\Models\Invoice;
 use App\Models\Vendor;
@@ -28,17 +29,41 @@ class EventController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create(Request $request)
     {
+        // 1. If no mode selected, show Wizard
+        if (!$request->has('client_request_id') && !$request->has('direct_booking')) {
+            // Get approved requests that don't have an event yet
+            $approvedRequests = ClientRequest::whereIn('detailed_status', ['approved', 'recommendation_sent'])
+                ->whereDoesntHave('event')
+                ->orderBy('event_date', 'asc')
+                ->get();
+                
+            return view('events.wizard', compact('approvedRequests'));
+        }
+
+        // 2. Prepare Data for Form
         $venues = Venue::orderBy('name')->get();
-        $vendorVenues = Vendor::where('service_type_id', 22) // Service type ID 22 is 'Venue'
+        $vendorVenues = Vendor::where('service_type_id', 22)
                                 ->with(['user', 'services' => function($query) {
                                     $query->wherePivot('is_available', true);
                                 }])
                                 ->get();
-        return view('events.create', compact('venues', 'vendorVenues'));
+
+        $clientRequest = null;
+        if ($request->has('client_request_id')) {
+            $clientRequest = ClientRequest::findOrFail($request->client_request_id);
+        }
+
+        return view('events.create', compact('venues', 'vendorVenues', 'clientRequest'));
     }
 
+    /**
+     * Store a newly created resource in storage.
+     */
     /**
      * Store a newly created resource in storage.
      */
@@ -58,45 +83,96 @@ class EventController extends Controller
             'client_phone' => 'nullable|string|max:20',
             'client_email' => 'nullable|email|max:255',
             'client_address' => 'nullable|string',
+            'client_request_id' => 'nullable|exists:client_requests,id', // New field
         ]);
 
-        // Handle venue selection logic
-        $eventData = [
-            'event_name' => $validated['event_name'],
-            'start_time' => $validated['start_time'],
-            'end_time' => $validated['end_time'],
-            'description' => $validated['description'] ?? null,
-            'client_name' => $validated['client_name'] ?? null,
-            'client_phone' => $validated['client_phone'] ?? null,
-            'client_email' => $validated['client_email'] ?? null,
-            'client_address' => $validated['client_address'] ?? null,
-        ];
+        \Illuminate\Support\Facades\DB::beginTransaction();
 
-        // Set venue_id based on venue_type selection
-        if ($validated['venue_type'] === 'standard' && !empty($validated['venue_id'])) {
-            $eventData['venue_id'] = $validated['venue_id'];
-        } elseif ($validated['venue_type'] === 'vendor' && !empty($validated['vendor_venue_id'])) {
-            $eventData['venue_id'] = null; // We'll handle vendor venues differently if needed
+        try {
+            // 1. Handle Client Request Logic
+            $clientRequestId = $validated['client_request_id'] ?? null;
 
-            // Create or update a temporary venue record for the vendor venue
-            // Or we can handle it differently based on business logic
-        } else {
-            $eventData['venue_id'] = null; // No venue selected
+            // If Direct Booking (No ID provided), create a new Client Request automatically
+            if (!$clientRequestId) {
+                // We need client details for direct booking
+                if (empty($validated['client_name']) || empty($validated['client_email'])) {
+                    throw new \Exception('Client Name and Email are required for direct booking.');
+                }
+
+                // Check/Create User
+                $user = \App\Models\User::where('email', $validated['client_email'])->first();
+                if (!$user) {
+                    $password = \Illuminate\Support\Str::random(10);
+                    $user = \App\Models\User::create([
+                        'name' => $validated['client_name'],
+                        'email' => $validated['client_email'],
+                        'password' => \Illuminate\Support\Facades\Hash::make($password),
+                        'phone_number' => $validated['client_phone'] ?? null,
+                    ]);
+                    $user->assignRole('User');
+                }
+
+                $newRequest = ClientRequest::create([
+                    'user_id' => $user->id,
+                    'client_name' => $validated['client_name'],
+                    'client_email' => $validated['client_email'],
+                    'client_phone' => $validated['client_phone'],
+                    'event_date' => $validated['start_time'], // Use start time as event date
+                    'event_type' => 'Direct Booking', // Default type
+                    'status' => 'done', // Mark as done immediately
+                    'detailed_status' => 'converted_to_event',
+                    'request_source' => 'direct_booking',
+                ]);
+                $clientRequestId = $newRequest->id;
+            } else {
+                // Update existing request status
+                $existingRequest = ClientRequest::find($clientRequestId);
+                $existingRequest->update([
+                    'status' => 'done',
+                    'detailed_status' => 'converted_to_event'
+                ]);
+            }
+
+            // 2. Prepare Event Data
+            $eventData = [
+                'client_request_id' => $clientRequestId, // Link to request
+                'event_name' => $validated['event_name'],
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'],
+                'description' => $validated['description'] ?? null,
+                'client_name' => $validated['client_name'] ?? null,
+                'client_phone' => $validated['client_phone'] ?? null,
+                'client_email' => $validated['client_email'] ?? null,
+                'client_address' => $validated['client_address'] ?? null,
+            ];
+
+            // Set venue_id based on venue_type selection
+            if ($validated['venue_type'] === 'standard' && !empty($validated['venue_id'])) {
+                $eventData['venue_id'] = $validated['venue_id'];
+            } else {
+                $eventData['venue_id'] = null;
+            }
+
+            // 3. Create the event
+            $event = $request->user()->events()->create($eventData);
+
+            // 4. Handle Vendor Venue
+            if ($validated['venue_type'] === 'vendor' && !empty($validated['vendor_venue_id'])) {
+                $event->vendors()->attach($validated['vendor_venue_id'], [
+                    'agreed_price' => $validated['vendor_venue_price'] ?? 0,
+                    'contract_details' => "Venue: " . ($validated['vendor_venue_name'] ?? 'Vendor Venue'),
+                    'status' => 'Confirmed',
+                ]);
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return redirect()->route('events.index')->with('success', 'Event created successfully (Linked to Client Request).');
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return back()->with('error', 'Failed to create event: ' . $e->getMessage())->withInput();
         }
-
-        // Create the event
-        $event = $request->user()->events()->create($eventData);
-
-        // If vendor venue is selected, assign the vendor as a venue vendor to the event
-        if ($validated['venue_type'] === 'vendor' && !empty($validated['vendor_venue_id'])) {
-            $event->vendors()->attach($validated['vendor_venue_id'], [
-                'agreed_price' => $validated['vendor_venue_price'] ?? 0,
-                'contract_details' => "Venue: " . ($validated['vendor_venue_name'] ?? 'Vendor Venue'),
-                'status' => 'Confirmed', // or Negotiation based on your business logic
-            ]);
-        }
-
-        return redirect()->route('events.index')->with('success', 'Event berhasil dibuat.');
     }
 
     /**

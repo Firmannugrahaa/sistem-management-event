@@ -24,9 +24,28 @@
 
           <form id="create-event-form" action="{{ route('events.store') }}" method="POST" class="needs-confirmation" data-confirmation-title="Konfirmasi Pembuatan Event" data-confirmation-message="Apakah Anda yakin ingin membuat event baru ini?">
             @csrf
+            
+            @if(isset($clientRequest))
+                <input type="hidden" name="client_request_id" value="{{ $clientRequest->id }}">
+                <div class="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                Creating event from lead: <strong>{{ $clientRequest->client_name }} - {{ $clientRequest->event_type }}</strong>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <div class="mb-4">
               <x-input-label for="event_name" :value="__('Nama Event')" />
-              <x-text-input id="event_name" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="event_name" :value="old('event_name')" required autofocus />
+              <x-text-input id="event_name" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="event_name" :value="old('event_name', isset($clientRequest) ? $clientRequest->event_type . ' - ' . $clientRequest->client_name : '')" required autofocus />
             </div>
 
             {{-- VENUE SELECTION WITH TWO OPTIONS --}}
@@ -141,7 +160,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <x-input-label for="start_time" :value="__('Waktu Mulai')" />
-                <x-text-input id="start_time" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="datetime-local" name="start_time" :value="old('start_time')" required />
+                <x-text-input id="start_time" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="datetime-local" name="start_time" :value="old('start_time', isset($clientRequest) ? $clientRequest->event_date->format('Y-m-d\TH:i') : '')" required />
               </div>
               <div>
                 <x-input-label for="end_time" :value="__('Waktu Selesai')" />
@@ -151,7 +170,7 @@
 
             <div class="mb-4">
               <x-input-label for="description" :value="__('Deskripsi Event')" />
-              <textarea id="description" name="description" rows="4" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">{{ old('description') }}</textarea>
+              <textarea id="description" name="description" rows="4" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">{{ old('description', isset($clientRequest) ? "Event Type: " . $clientRequest->event_type . "\nBudget: " . number_format($clientRequest->budget) . "\nNotes: " . $clientRequest->message : '') }}</textarea>
             </div>
 
             {{-- CLIENT INFORMATION SECTION --}}
@@ -161,17 +180,17 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <x-input-label for="client_name" :value="__('Nama Klien')" />
-                  <x-text-input id="client_name" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="client_name" :value="old('client_name')" placeholder="Masukkan nama klien" />
+                  <x-text-input id="client_name" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="client_name" :value="old('client_name', isset($clientRequest) ? $clientRequest->client_name : '')" placeholder="Masukkan nama klien" />
                 </div>
                 <div>
                   <x-input-label for="client_phone" :value="__('Nomor Telepon')" />
-                  <x-text-input id="client_phone" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="client_phone" :value="old('client_phone')" placeholder="Contoh: +6281234567890" />
+                  <x-text-input id="client_phone" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="client_phone" :value="old('client_phone', isset($clientRequest) ? $clientRequest->client_phone : '')" placeholder="Contoh: +6281234567890" />
                 </div>
               </div>
               
               <div class="mb-4">
                 <x-input-label for="client_email" :value="__('Email')" />
-                <x-text-input id="client_email" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="email" name="client_email" :value="old('client_email')" placeholder="email@klien.com" />
+                <x-text-input id="client_email" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="email" name="client_email" :value="old('client_email', isset($clientRequest) ? $clientRequest->client_email : '')" placeholder="email@klien.com" />
               </div>
               
               <div class="mb-4">

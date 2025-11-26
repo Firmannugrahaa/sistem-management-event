@@ -16,6 +16,7 @@ class Event extends Model
     protected $fillable = [
         'user_id',
         'venue_id',
+        'client_request_id',
         'event_name',
         'description',
         'start_time',
@@ -39,6 +40,11 @@ class Event extends Model
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class);
+    }
+
+    public function clientRequest(): BelongsTo
+    {
+        return $this->belongsTo(ClientRequest::class);
     }
 
     public function guests(): HasMany
