@@ -176,9 +176,14 @@
                   <td class="px-6 py-4">Rp {{ number_format($vendor->pivot->agreed_price, 0, ',', '.') }}</td>
                   <td class="px-6 py-4">{{ $vendor->pivot->status }}</td>
                   <td class="px-6 py-4 text-right">
+                    {{-- Tombol Kelola Item (New) --}}
+                    <x-secondary-button tag="a" :href="route('events.vendor-items.index', [$event, $vendor])" class="mr-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200">
+                      Kelola Item
+                    </x-secondary-button>
+
                     {{-- Tombol Edit Vendor --}}
                     <x-secondary-button tag="a" :href="route('vendors.edit', $vendor)" class="mr-2">
-                      Edit
+                      Edit Vendor
                     </x-secondary-button>
 
                     {{-- Tombol Lepas Vendor dengan konfirmasi modal --}}
@@ -200,9 +205,9 @@
                     />
 
                     {{-- Form tersembunyi untuk aksi lepas vendor --}}
-                    <form id="detach-form-vendor-{{ $vendor->id }}" action="{{ route('events.detachVendor', [$event, $vendor]) }}" method="POST" class="hidden">
+                    <form id="detach-form-vendor-{{ $vendor->id }}" action="{{ route('events.detach-vendor', [$event, $vendor]) }}" method="POST" class="hidden">
                       @csrf
-                      @method('DELETE')
+                      @method('POST')
                     </form>
                   </td>
                 </tr>

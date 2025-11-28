@@ -3,6 +3,6 @@
 return [
     App\Providers\AppServiceProvider::class,
     App\Providers\AuthServiceProvider::class,
-
+    App\Providers\TelescopeServiceProvider::class,
     Maatwebsite\Excel\ExcelServiceProvider::class,
 ];

@@ -129,17 +129,40 @@ class SettingsController extends Controller
         
         // Handle company logo upload
         if ($request->hasFile('company_logo_path')) {
+            // Check if logo can be updated (30-day restriction)
+            // SuperUser can bypass this restriction
+            if ($settings && !$settings->canUpdateLogo(Auth::user())) {
+                $daysRemaining = $settings->daysUntilLogoCanUpdate(Auth::user());
+                return redirect()->back()
+                    ->withErrors([
+                        'company_logo_path' => "Logo hanya bisa diubah 30 hari sekali. Anda masih harus menunggu {$daysRemaining} hari lagi."
+                    ])
+                    ->withInput();
+            }
+
             // Delete old logo if exists
             if ($settings && $settings->company_logo_path) {
-                $oldLogoPath = storage_path('app/public/' . $settings->company_logo_path);
+                // Check if it's in storage or public
+                $oldLogoPath = public_path($settings->company_logo_path);
                 if (file_exists($oldLogoPath)) {
                     unlink($oldLogoPath);
+                } else {
+                    // Fallback to storage path check just in case
+                    $oldStoragePath = storage_path('app/public/' . $settings->company_logo_path);
+                    if (file_exists($oldStoragePath)) {
+                        unlink($oldStoragePath);
+                    }
                 }
             }
 
-            // Store new logo
-            $logoPath = $request->file('company_logo_path')->store('logos', 'public');
+            // Store new logo directly to public/logos
+            $file = $request->file('company_logo_path');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('logos'), $filename);
+            
+            $logoPath = 'logos/' . $filename;
             $request->merge(['company_logo_path' => $logoPath]);
+            $request->merge(['logo_last_updated_at' => now()]);
         }
 
         // Prioritize manual company address, if not provided then generate from structured fields
@@ -155,6 +178,7 @@ class SettingsController extends Controller
                 'company_email',
                 'company_address',
                 'company_logo_path',
+                'logo_last_updated_at',
                 'province_id',
                 'city_id',
                 'district_id',
@@ -176,6 +200,7 @@ class SettingsController extends Controller
                 'company_email',
                 'company_address',
                 'company_logo_path',
+                'logo_last_updated_at',
                 'province_id',
                 'city_id',
                 'district_id',
@@ -193,5 +218,45 @@ class SettingsController extends Controller
         }
 
         return redirect()->route('superuser.settings.index')->with('success', 'Pengaturan perusahaan berhasil diperbarui.');
+    }
+
+    /**
+     * Delete the company logo.
+     */
+    public function deleteLogo()
+    {
+        $settings = CompanySetting::first();
+
+        if (!$settings || !$settings->company_logo_path) {
+            return redirect()->route('superuser.settings.index')->with('error', 'Tidak ada logo untuk dihapus.');
+        }
+
+        // Check if logo can be updated (30-day restriction)
+        // SuperUser can bypass this restriction
+        if (!$settings->canUpdateLogo(Auth::user())) {
+            $daysRemaining = $settings->daysUntilLogoCanUpdate(Auth::user());
+            return redirect()->route('superuser.settings.index')
+                ->with('error', "Logo hanya bisa dihapus 30 hari sekali. Anda masih harus menunggu {$daysRemaining} hari lagi.");
+        }
+
+        // Delete the logo file
+        $logoPath = public_path($settings->company_logo_path);
+        if (file_exists($logoPath)) {
+            unlink($logoPath);
+        } else {
+            // Fallback to storage path check
+            $storagePath = storage_path('app/public/' . $settings->company_logo_path);
+            if (file_exists($storagePath)) {
+                unlink($storagePath);
+            }
+        }
+
+        // Clear logo path and update timestamp
+        $settings->update([
+            'company_logo_path' => null,
+            'logo_last_updated_at' => now()
+        ]);
+
+        return redirect()->route('superuser.settings.index')->with('success', 'Logo perusahaan berhasil dihapus.');
     }
 }

@@ -13,8 +13,8 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        // Redirect client users to their specific dashboard since they shouldn't see revenue reports
-        if ($user->hasRole('Client')) {
+        // Redirect client/user roles to their specific dashboard since they shouldn't see revenue reports
+        if ($user->hasRole(['Client', 'User'])) {
             return redirect()->route('client.dashboard');
         }
         // For Vendor roles, calculate revenue from their assigned events

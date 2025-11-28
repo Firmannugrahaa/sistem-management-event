@@ -30,18 +30,126 @@
               <x-text-input id="event_name" class="block mt-1 w-full" type="text" name="event_name" :value="old('event_name', $event->event_name)" required autofocus />
             </div>
 
-            {{-- DROPDOWN VENUE --}}
+            {{-- VENUE SELECTION WITH TWO OPTIONS --}}
             <div class="mb-4">
-              <x-input-label for="venue_id" :value="__('Pilih Venue')" />
+              <x-input-label for="venue_type" :value="__('Tipe Venue')" />
+              <select name="venue_type" id="venue_type" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" onchange="toggleVenueFields()">
+                <option value="none" {{ old('venue_type', $currentVenueType) == 'none' ? 'selected' : '' }}>-- Tidak ada venue --</option>
+                <option value="standard" {{ old('venue_type', $currentVenueType) == 'standard' ? 'selected' : '' }}>Venue Standar</option>
+                <option value="vendor" {{ old('venue_type', $currentVenueType) == 'vendor' ? 'selected' : '' }}>Vendor Venue</option>
+              </select>
+            </div>
+
+            {{-- STANDARD VENUE FIELD --}}
+            <div id="standard-venue-field" class="mb-4" style="{{ old('venue_type', $currentVenueType) == 'standard' ? '' : 'display: none;' }}">
+              <x-input-label for="venue_id" :value="__('Pilih Venue Standar')" />
               <select name="venue_id" id="venue_id" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
-                <option value="">-- Tidak ada venue --</option>
+                <option value="">-- Pilih venue standar --</option>
                 @foreach ($venues as $venue)
                 <option value="{{ $venue->id }}" {{ old('venue_id', $event->venue_id) == $venue->id ? 'selected' : '' }}>
-                  {{ $venue->name }} (Kapasitas: {{ $venue->capacity }} orang)
+                  {{ $venue->name }} (Kapasitas: {{ $venue->capacity }} orang, Harga: Rp {{ number_format($venue->price, 0, ',', '.') }})
                 </option>
                 @endforeach
               </select>
             </div>
+
+            {{-- VENDOR VENUE FIELD --}}
+            <div id="vendor-venue-field" class="mb-4" style="{{ old('venue_type', $currentVenueType) == 'vendor' ? '' : 'display: none;' }}">
+              <x-input-label for="vendor_venue_id" :value="__('Pilih Vendor Venue')" />
+              <select name="vendor_venue_id" id="vendor_venue_id" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
+                <option value="">-- Pilih vendor yang menyediakan venue --</option>
+                @foreach ($vendorVenues as $vendor)
+                <option value="{{ $vendor->id }}"
+                  {{ (old('vendor_venue_id') && old('vendor_venue_id') == $vendor->id) ||
+                     ($currentVenueType == 'vendor' && $event->vendors()->where('vendor_id', $vendor->id)->whereHas('serviceType', function($q) { $q->where('name', 'Venue'); })->exists()) ? 'selected' : '' }}>
+                  {{ $vendor->user->name ?? $vendor->contact_person }} ({{ $vendor->phone_number }})
+                </option>
+                @endforeach
+              </select>
+            </div>
+
+            {{-- VENDOR VENUE DETAILS FIELD (shown when vendor venue is selected) --}}
+            <div id="vendor-venue-details" class="mb-4" style="{{ old('venue_type', $currentVenueType) == 'vendor' ? '' : 'display: none;' }}">
+              <x-input-label for="vendor_venue_name" :value="__('Nama Venue Vendor')" />
+              <x-text-input id="vendor_venue_name" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="vendor_venue_name" :value="old('vendor_venue_name', $event->vendors()->whereHas('serviceType', function($q) { $q->where('name', 'Venue'); })->first()?->pivot?->contract_details ?? '')" placeholder="Masukkan nama venue dari vendor" />
+
+              <x-input-label for="vendor_venue_price" class="mt-4" :value="__('Harga Venue Vendor')" />
+              <x-text-input id="vendor_venue_price" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="number" name="vendor_venue_price" :value="old('vendor_venue_price', $event->vendors()->whereHas('serviceType', function($q) { $q->where('name', 'Venue'); })->first()?->pivot?->agreed_price ?? '')" placeholder="Masukkan harga venue dari vendor" />
+            </div>
+
+            <script>
+              function toggleVenueFields() {
+                const venueType = document.getElementById('venue_type').value;
+                const standardVenueField = document.getElementById('standard-venue-field');
+                const vendorVenueField = document.getElementById('vendor-venue-field');
+                const vendorVenueDetails = document.getElementById('vendor-venue-details');
+
+                // Hide all fields initially
+                if(standardVenueField) standardVenueField.style.display = 'none';
+                if(vendorVenueField) vendorVenueField.style.display = 'none';
+                if(vendorVenueDetails) vendorVenueDetails.style.display = 'none';
+
+                // Show appropriate field based on selection
+                if(venueType === 'standard' && standardVenueField) {
+                  standardVenueField.style.display = 'block';
+                } else if(venueType === 'vendor' && vendorVenueField) {
+                  vendorVenueField.style.display = 'block';
+                  if(vendorVenueDetails) vendorVenueDetails.style.display = 'block';
+                }
+              }
+
+              // Handle vendor selection to automatically populate venue details
+              function handleVendorVenueSelection() {
+                const vendorSelect = document.getElementById('vendor_venue_id');
+                if (!vendorSelect) return;
+
+                vendorSelect.addEventListener('change', function() {
+                  const selectedVendorId = this.value;
+                  if (!selectedVendorId) {
+                    document.getElementById('vendor_venue_name').value = '';
+                    document.getElementById('vendor_venue_price').value = '';
+                    return;
+                  }
+
+                  // Find the vendor in the dropdown options data
+                  const selectedOption = this.options[this.selectedIndex];
+                  if (selectedOption) {
+                    // In a real implementation, we would fetch service details from the backend
+                    // For now, we'll simulate getting the first available service of the vendor
+                    fetch(`/api/vendor/${selectedVendorId}/venue-service`)
+                      .then(response => response.json())
+                      .then(data => {
+                        if (data.service) {
+                          document.getElementById('vendor_venue_name').value = data.service.name;
+                          document.getElementById('vendor_venue_price').value = data.service.price;
+                        }
+                      })
+                      .catch(error => {
+                        console.log('Vendor service not found, using vendor contact person as name');
+                        // Fallback: use vendor name as venue name
+                        document.getElementById('vendor_venue_name').value = selectedOption.text.split('(')[0].trim();
+                        document.getElementById('vendor_venue_price').value = '';
+                      });
+                  }
+                });
+              }
+
+              // Initialize on page load
+              document.addEventListener('DOMContentLoaded', function() {
+                toggleVenueFields();
+                handleVendorVenueSelection();
+
+                // If vendor venue is pre-selected, populate the details
+                if (document.getElementById('venue_type').value === 'vendor') {
+                  // Trigger change event to populate details if vendor is already selected
+                  const vendorSelect = document.getElementById('vendor_venue_id');
+                  if (vendorSelect && vendorSelect.value) {
+                    const event = new Event('change');
+                    vendorSelect.dispatchEvent(event);
+                  }
+                }
+              });
+            </script>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>

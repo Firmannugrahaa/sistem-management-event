@@ -15,6 +15,11 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    
+    <!-- Alpine.js x-cloak style -->
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 </head>
 
 <body class="font-sans antialiased bg-[#F7F7F7] text-[#1A1A1A]"
@@ -30,13 +35,19 @@
     <!-- Main content area that shifts based on sidebar -->
     <div id="main-content"
         :class="{ 'lg:ml-64': sidebarExpanded, 'lg:ml-20': !sidebarExpanded }"
-        class="transition-all duration-300 ease-in-out">
+        class="transition-all duration-300">
 
         <!-- Page Heading -->
         @isset($header)
         <header class="p-2 border-b border-[#E0E0E0] bg-[#FFFFFF] shadow">
-            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                {{ $header }}
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <div>
+                    {{ $header }}
+                </div>
+                <div>
+                    <!-- Notification Bell -->
+                    <x-notification-bell />
+                </div>
             </div>
         </header>
         @endisset
@@ -49,6 +60,7 @@
     </div>
     <x-alert-modal /> {{-- Our confirmation modal --}}
     <x-toast-alert type="success" />
+    <x-loading />
     @stack('scripts')
 </body>
 

@@ -28,4 +28,12 @@ class Service extends Model
     protected $attributes = [
         'is_available' => true,
     ];
+
+    // Relasi Many-to-Many: Layanan bisa disediakan oleh banyak vendor
+    public function vendors()
+    {
+        return $this->belongsToMany(Vendor::class, 'vendor_services')
+                    ->withPivot('price', 'description', 'is_available')
+                    ->withTimestamps();
+    }
 }

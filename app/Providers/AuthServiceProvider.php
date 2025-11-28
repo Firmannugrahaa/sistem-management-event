@@ -25,6 +25,7 @@ class AuthServiceProvider extends ServiceProvider
         'App\Models\Voucher' => 'App\Policies\VoucherPolicy',
         'App\Models\Venue' => 'App\Policies\VenuePolicy',
         'App\Models\CompanySetting' => 'App\Policies\CompanySettingPolicy',
+        'App\Models\ClientRequest' => 'App\Policies\ClientRequestPolicy',
     ];
 
     /**

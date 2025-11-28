@@ -31,9 +31,17 @@ class AuthenticatedSessionController extends Controller
         $user = auth()->user();
 
         // Role-based redirection
-        if ($user->hasRole('Client')) {
-            // Client users should go to the main landing page after login (not intended URL)
+        if ($user->hasRole('User')) {
+            // Client users (role: User) should go to the main landing page after login
             return redirect()->route('landing.page');
+        } else if ($user->hasRole('Vendor')) {
+            // Vendor users should complete their business profile first
+            // Check if profile is complete (you can add more checks here)
+            $vendor = $user->vendor;
+            
+            // Always redirect to profile edit for now to complete/update data
+            return redirect()->route('vendor.business-profile.edit')
+                ->with('info', 'Silakan lengkapi atau perbarui profil bisnis Anda.');
         } else if ($user->hasRole('SuperUser')) {
             return redirect()->intended(route('superuser.dashboard.index', absolute: false));
         } else {
