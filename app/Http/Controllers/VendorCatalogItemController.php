@@ -61,12 +61,13 @@ class VendorCatalogItemController extends Controller
 
         $item = $vendor->catalogItems()->create([
             'name' => $validated['name'],
-            'category_id' => $validated['category_id'],
+            'category_id' => $validated['category_id'] ?? null,
             'price' => $validated['price'],
             'status' => $validated['status'],
-            'description' => $validated['description'],
+            'description' => $validated['description'] ?? null,
             'attributes' => !empty($attributes) ? $attributes : null,
             'show_stock'  => $request->has('show_stock'),
+            'show_on_landing' => $request->has('show_on_landing'),
         ]);
 
         // Handle Image Uploads
@@ -123,12 +124,13 @@ class VendorCatalogItemController extends Controller
 
         $item->update([
             'name' => $validated['name'],
-            'category_id' => $validated['category_id'],
+            'category_id' => $validated['category_id'] ?? null,
             'price' => $validated['price'],
             'status' => $validated['status'],
-            'description' => $validated['description'],
+            'description' => $validated['description'] ?? null,
             'attributes' => !empty($attributes) ? $attributes : null,
             'show_stock'  => $request->has('show_stock'), 
+            'show_on_landing' => $request->has('show_on_landing'),
         ]);
 
         // Handle New Image Uploads

@@ -15,11 +15,33 @@ class VendorProductController extends Controller
     public function index()
     {
         $user = Auth::user();
-        if (!$user->hasRole('Vendor')) {
-            abort(403);
+        // Check permission, with fallback for Owner/Admin roles
+        if (!$user->can('manage_services') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403, 'Unauthorized action.');
         }
 
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
+        $vendor = null;
+
+        if ($user->hasRole('Vendor') || $user->hasRole('Owner')) {
+            $vendor = $user->vendor;
+        } elseif ($user->hasRole('Admin') || $user->hasRole('Staff')) {
+            // Admin/Staff manage their Owner's vendor profile
+            $owner = \App\Models\User::find($user->owner_id);
+            if ($owner) {
+                $vendor = $owner->vendor;
+            }
+        }
+
+        if (!$vendor) {
+            // If no vendor profile exists, redirect to create one or show error
+            // For Owner/Admin/Staff, redirect to business profile creation
+            if ($user->hasRole(['Owner', 'Admin', 'Staff'])) {
+                 return redirect()->route('vendor.business-profile.edit')
+                    ->with('warning', 'Profil bisnis belum lengkap. Silakan lengkapi terlebih dahulu.');
+            }
+            abort(404, 'Vendor profile not found.');
+        }
+
         $products = $vendor->products()->orderBy('created_at', 'desc')->paginate(10);
 
         return view('vendor.product.index', compact('products'));
@@ -30,6 +52,9 @@ class VendorProductController extends Controller
      */
     public function create()
     {
+        if (!Auth::user()->can('manage_services') && !Auth::user()->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403);
+        }
         return view('vendor.product.create');
     }
 
@@ -39,7 +64,23 @@ class VendorProductController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
+        if (!$user->can('manage_services') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403);
+        }
+
+        $vendor = null;
+        if ($user->hasRole('Vendor') || $user->hasRole('Owner')) {
+            $vendor = $user->vendor;
+        } elseif ($user->hasRole('Admin') || $user->hasRole('Staff')) {
+            $owner = \App\Models\User::find($user->owner_id);
+            if ($owner) {
+                $vendor = $owner->vendor;
+            }
+        }
+
+        if (!$vendor) {
+            abort(404, 'Vendor profile not found.');
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -61,7 +102,24 @@ class VendorProductController extends Controller
     public function edit($id)
     {
         $user = Auth::user();
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
+        if (!$user->can('manage_services') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403);
+        }
+
+        $vendor = null;
+        if ($user->hasRole('Vendor') || $user->hasRole('Owner')) {
+            $vendor = $user->vendor;
+        } elseif ($user->hasRole('Admin') || $user->hasRole('Staff')) {
+            $owner = \App\Models\User::find($user->owner_id);
+            if ($owner) {
+                $vendor = $owner->vendor;
+            }
+        }
+
+        if (!$vendor) {
+            abort(404, 'Vendor profile not found.');
+        }
+
         $product = $vendor->products()->findOrFail($id);
 
         return view('vendor.product.edit', compact('product'));
@@ -73,7 +131,24 @@ class VendorProductController extends Controller
     public function update(Request $request, $id)
     {
         $user = Auth::user();
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
+        if (!$user->can('manage_services') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403);
+        }
+
+        $vendor = null;
+        if ($user->hasRole('Vendor') || $user->hasRole('Owner')) {
+            $vendor = $user->vendor;
+        } elseif ($user->hasRole('Admin') || $user->hasRole('Staff')) {
+            $owner = \App\Models\User::find($user->owner_id);
+            if ($owner) {
+                $vendor = $owner->vendor;
+            }
+        }
+
+        if (!$vendor) {
+            abort(404, 'Vendor profile not found.');
+        }
+
         $product = $vendor->products()->findOrFail($id);
 
         $validated = $request->validate([
@@ -96,7 +171,24 @@ class VendorProductController extends Controller
     public function destroy($id)
     {
         $user = Auth::user();
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
+        if (!$user->can('manage_services') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403);
+        }
+
+        $vendor = null;
+        if ($user->hasRole('Vendor') || $user->hasRole('Owner')) {
+            $vendor = $user->vendor;
+        } elseif ($user->hasRole('Admin') || $user->hasRole('Staff')) {
+            $owner = \App\Models\User::find($user->owner_id);
+            if ($owner) {
+                $vendor = $owner->vendor;
+            }
+        }
+
+        if (!$vendor) {
+            abort(404, 'Vendor profile not found.');
+        }
+
         $product = $vendor->products()->findOrFail($id);
 
         $product->delete();

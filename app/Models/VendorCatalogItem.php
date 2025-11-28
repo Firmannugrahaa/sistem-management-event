@@ -20,6 +20,7 @@ class VendorCatalogItem extends Model
         'status',
         'quantity',
         'show_stock',
+        'show_on_landing',
         'attributes',
     ];
 

@@ -1,20 +1,22 @@
-@extends('layouts.app')
-
-@section('content')
-<div class="py-6">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="mb-6 flex items-center space-x-4">
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex items-center space-x-4">
             <a href="{{ route('client.dashboard') }}" class="text-gray-500 hover:text-gray-700">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                 </svg>
             </a>
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">{{ $clientRequest->event_type }}</h1>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    {{ $clientRequest->event_type }}
+                </h2>
                 <p class="text-sm text-gray-600">Request ID: #{{ $clientRequest->id }} • {{ $clientRequest->created_at->format('d M Y') }}</p>
             </div>
         </div>
+    </x-slot>
+
+    <div class="py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Main Content -->
@@ -131,4 +133,4 @@
         </div>
     </div>
 </div>
-@endsection
+</x-app-layout>

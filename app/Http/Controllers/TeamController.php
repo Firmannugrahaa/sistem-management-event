@@ -18,7 +18,10 @@ class TeamController extends Controller
      */
     public function index()
     {
-        $teamMembers = User::where('owner_id', auth()->id())
+        // Determine the master owner ID for the team/company
+        $teamOwnerId = auth()->user()->owner_id ?? auth()->id();
+        
+        $teamMembers = User::where('owner_id', $teamOwnerId)
             ->whereDoesntHave('roles', function ($query) {
                 $query->where('name', 'Vendor');
             })
@@ -163,8 +166,11 @@ class TeamController extends Controller
      */
     public function edit(User $member)
     {
+        // Determine the master owner ID for the team/company
+        $teamOwnerId = auth()->user()->owner_id ?? auth()->id();
+        
         // Authorization: Make sure the user being edited belongs to the authenticated user's team
-        if ($member->owner_id !== auth()->id()) {
+        if ($member->owner_id !== $teamOwnerId) {
             abort(403, 'UNAUTHORIZED_ACTION');
         }
 
@@ -177,8 +183,11 @@ class TeamController extends Controller
      */
     public function update(Request $request, User $member)
     {
+        // Determine the master owner ID for the team/company
+        $teamOwnerId = auth()->user()->owner_id ?? auth()->id();
+        
         // Authorization: Make sure the user being updated belongs to the authenticated user's team
-        if ($member->owner_id !== auth()->id()) {
+        if ($member->owner_id !== $teamOwnerId) {
             abort(403, 'UNAUTHORIZED_ACTION');
         }
 
@@ -231,8 +240,11 @@ class TeamController extends Controller
      */
     public function destroy(User $member)
     {
+        // Determine the master owner ID for the team/company
+        $teamOwnerId = auth()->user()->owner_id ?? auth()->id();
+        
         // Authorization: Make sure the user being deleted belongs to the authenticated user's team
-        if ($member->owner_id !== auth()->id()) {
+        if ($member->owner_id !== $teamOwnerId) {
             abort(403, 'UNAUTHORIZED_ACTION');
         }
 

@@ -216,13 +216,32 @@ class ClientRequestController extends Controller
             'status' => 'required|in:pending,on_process,done',
         ]);
 
+        $oldStatus = $clientRequest->status;
+        $newStatus = $validated['status'];
+
         // Track when first responded
         if ($clientRequest->status === 'pending' && $validated['status'] !== 'pending' && !$clientRequest->responded_at) {
             $clientRequest->responded_at = now();
         }
 
-        $clientRequest->status = $validated['status'];
+        $clientRequest->status = $newStatus;
         $clientRequest->save();
+
+        // 🔔 CREATE NOTIFICATION for client
+        if ($clientRequest->user_id && $oldStatus !== $newStatus) {
+            \App\Models\Notification::create([
+                'user_id' => $clientRequest->user_id,
+                'type' => 'status_update',
+                'title' => 'Status Permintaan Diperbarui',
+                'message' => "Status permintaan Anda untuk event '{$clientRequest->event_type}' telah diubah dari '{$oldStatus}' menjadi '{$newStatus}'.",
+                'link' => route('client-requests.show', $clientRequest->id),
+                'data' => [
+                    'client_request_id' => $clientRequest->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus
+                ]
+            ]);
+        }
 
         return response()->json([
             'success' => true,
@@ -230,9 +249,6 @@ class ClientRequestController extends Controller
         ]);
     }
 
-    /**
-     * Assign staff to request via AJAX
-     */
     /**
      * Assign staff to request via AJAX
      */

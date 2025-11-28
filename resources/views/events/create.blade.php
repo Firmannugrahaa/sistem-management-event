@@ -22,7 +22,7 @@
           </div>
           @endif
 
-          <form id="create-event-form" action="{{ route('events.store') }}" method="POST" class="needs-confirmation" data-confirmation-title="Konfirmasi Pembuatan Event" data-confirmation-message="Apakah Anda yakin ingin membuat event baru ini?">
+          <form id="create-event-form" action="{{ route('events.store') }}" method="POST">
             @csrf
             
             @if(isset($clientRequest))
@@ -160,13 +160,40 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <x-input-label for="start_time" :value="__('Waktu Mulai')" />
-                <x-text-input id="start_time" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="datetime-local" name="start_time" :value="old('start_time', isset($clientRequest) ? $clientRequest->event_date->format('Y-m-d\TH:i') : '')" required />
+                <x-text-input id="start_time" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="datetime-local" name="start_time" :value="old('start_time', isset($clientRequest) ? $clientRequest->event_date->format('Y-m-d\TH:i') : '')" required onchange="updateEndTime()" />
               </div>
               <div>
                 <x-input-label for="end_time" :value="__('Waktu Selesai')" />
                 <x-text-input id="end_time" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="datetime-local" name="end_time" :value="old('end_time')" required />
               </div>
             </div>
+
+            <script>
+              function updateEndTime() {
+                const startTime = document.getElementById('start_time').value;
+                const endTimeField = document.getElementById('end_time');
+                
+                if (startTime && !endTimeField.value) {
+                  // Auto-fill end_time = start_time + 3 hours
+                  const start = new Date(startTime);
+                  start.setHours(start.getHours() + 3);
+                  
+                  // Format to datetime-local input format (YYYY-MM-DDTHH:mm)
+                  const year = start.getFullYear();
+                  const month = String(start.getMonth() + 1).padStart(2, '0');
+                  const day = String(start.getDate()).padStart(2, '0');
+                  const hours = String(start.getHours()).padStart(2, '0');
+                  const minutes = String(start.getMinutes()).padStart(2, '0');
+                  
+                  endTimeField.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                }
+              }
+              
+              // Also auto-fill on page load if start_time has value
+              document.addEventListener('DOMContentLoaded', function() {
+                updateEndTime();
+              });
+            </script>
 
             <div class="mb-4">
               <x-input-label for="description" :value="__('Deskripsi Event')" />
@@ -199,7 +226,7 @@
               </div>
             </div>
 
-            <x-primary-button type="submit">
+            <x-primary-button type="submit" id="submit-btn">
               Simpan Event
             </x-primary-button>
           </form>
@@ -208,4 +235,48 @@
       </div>
     </div>
   </div>
+
+  @push('scripts')
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.getElementById('create-event-form');
+      const submitBtn = document.getElementById('submit-btn');
+      
+      if (form && submitBtn) {
+        submitBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          Swal.fire({
+            title: 'Konfirmasi Pembuatan Event',
+            text: 'Apakah Anda yakin ingin membuat event baru ini?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Buat Event',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#012A4A',
+            cancelButtonColor: '#6B7280'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // Show loading
+              Swal.fire({
+                title: 'Menyimpan Event...',
+                text: 'Mohon tunggu sebentar',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                  Swal.showLoading();
+                }
+              });
+              
+              // Force submit
+              form.submit();
+            }
+          });
+        });
+      }
+    });
+  </script>
+  @endpush
 </x-app-layout>

@@ -117,20 +117,37 @@
                 </div>
 
                 {{-- Setelah textarea Deskripsi (atau di akhir Basic Info) --}}
-<div class="flex items-center gap-3 mt-4">
-    <input type="checkbox"
-           name="show_stock"
-           id="show_stock"
-           value="1"
-           {{ old('show_stock') ? 'checked' : '' }}
-           class="rounded border-[#E0E0E0] text-[#27AE60] focus:ring-[#27AE60] h-5 w-5">
-    <label for="show_stock" class="text-sm font-medium text-[#1A1A1A]">
-        Tampilkan jumlah stok katalog di profil publik
-    </label>
+<div class="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+    <div class="flex items-center gap-3">
+        <input type="checkbox"
+               name="show_stock"
+               id="show_stock"
+               value="1"
+               {{ old('show_stock', $item->show_stock) ? 'checked' : '' }}
+               class="rounded border-[#E0E0E0] text-[#27AE60] focus:ring-[#27AE60] h-5 w-5">
+        <label for="show_stock" class="text-sm font-medium text-[#1A1A1A]">
+            Tampilkan jumlah stok katalog di profil publik
+        </label>
+    </div>
+    <p class="text-xs text-gray-500 ml-8">
+        Jika dicentang, pengunjung dapat melihat stok produk.
+    </p>
+
+    <div class="flex items-center gap-3 pt-2 border-t border-gray-100">
+        <input type="checkbox"
+               name="show_on_landing"
+               id="show_on_landing"
+               value="1"
+               {{ old('show_on_landing', $item->show_on_landing) ? 'checked' : '' }}
+               class="rounded border-[#E0E0E0] text-[#27AE60] focus:ring-[#27AE60] h-5 w-5">
+        <label for="show_on_landing" class="text-sm font-medium text-[#1A1A1A]">
+            Tampilkan di Landing Page (Section Venue Tersedia)
+        </label>
+    </div>
+    <p class="text-xs text-gray-500 ml-8">
+        Khusus untuk vendor Venue. Produk akan muncul di halaman depan website.
+    </p>
 </div>
-<p class="text-xs text-gray-500 mt-1">
-    Jika dicentang, pengunjung dapat melihat stok produk.
-</p>
 
                 <div class="flex justify-end gap-4">
                     <a href="{{ route('vendor.catalog.items.index') }}" class="px-6 py-3 bg-gray-100 text-[#1A1A1A] rounded-lg font-medium hover:bg-gray-200 transition">

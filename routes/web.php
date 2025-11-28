@@ -29,6 +29,14 @@ Route::get('/book-now', [\App\Http\Controllers\Public\PublicBookingController::c
 Route::post('/book-now', [\App\Http\Controllers\Public\PublicBookingController::class, 'storeBooking'])
     ->name('public.booking.store');
 
+// Public Catalog Item Detail
+Route::get('/catalog/item/{id}', [\App\Http\Controllers\Public\PublicCatalogController::class, 'show'])
+    ->name('public.catalog.item.show');
+
+// Event Packages (Admin Created)
+Route::get('/packages/{slug}', [\App\Http\Controllers\EventPackageController::class, 'show'])
+    ->name('event-packages.show');
+
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])->name('dashboard');
@@ -49,9 +57,7 @@ Route::post('/client/order/store-selections', [App\Http\Controllers\Client\Clien
 Route::post('/client/order/confirm', [App\Http\Controllers\Client\ClientOrderController::class, 'confirm'])
     ->middleware(['auth', 'verified', 'role:Client'])->name('client.order.confirm');
 
-// Client dashboard route
-Route::get('/client/dashboard', [App\Http\Controllers\Client\ClientDashboardController::class, 'index'])
-    ->middleware(['auth', 'verified', 'role:Client'])->name('client.dashboard');
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -61,6 +67,12 @@ Route::middleware('auth')->group(function () {
     // Forced Password Change
     Route::get('/password/change', [App\Http\Controllers\PasswordChangeController::class, 'create'])->name('password.change');
     Route::post('/password/change', [App\Http\Controllers\PasswordChangeController::class, 'store'])->name('password.change.update');
+
+    // Notifications
+    Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/mark-all-read', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    Route::post('/notifications/{id}/mark-read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::delete('/notifications/{id}', [App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
 
     // Team Management (Redirected to consolidated view)
     Route::get('team', function () {
@@ -101,6 +113,26 @@ Route::middleware('auth')->group(function () {
     Route::post('recommendations/{recommendation}/send', [App\Http\Controllers\RecommendationController::class, 'send'])
         ->name('recommendations.send');
 
+    // Company Products & Packages (Owner/Admin Only)
+    Route::middleware(['role:Owner|Admin|SuperUser'])->prefix('company')->name('company.')->group(function () {
+        Route::resource('products', App\Http\Controllers\CompanyProductController::class);
+        Route::resource('packages', App\Http\Controllers\CompanyPackageController::class);
+    });
+
+    // Event Packages Management (Admin/Owner Only)
+    Route::middleware(['role:Owner|Admin|SuperUser'])->resource('event-packages', App\Http\Controllers\EventPackageController::class)->except(['show']);
+
+    // Landing Gallery Management (Admin/Owner Only)
+    Route::middleware(['role:Owner|Admin|SuperUser'])->prefix('admin')->name('admin.')->group(function () {
+        Route::resource('landing-gallery', App\Http\Controllers\Admin\LandingGalleryController::class);
+        Route::post('landing-gallery/{landingGallery}/approve', [App\Http\Controllers\Admin\LandingGalleryController::class, 'approve'])->name('landing-gallery.approve');
+        Route::post('landing-gallery/{landingGallery}/reject', [App\Http\Controllers\Admin\LandingGalleryController::class, 'reject'])->name('landing-gallery.reject');
+        Route::post('landing-gallery/{landingGallery}/toggle-featured', [App\Http\Controllers\Admin\LandingGalleryController::class, 'toggleFeatured'])->name('landing-gallery.toggle-featured');
+        Route::post('landing-gallery/{landingGallery}/toggle-active', [App\Http\Controllers\Admin\LandingGalleryController::class, 'toggleActive'])->name('landing-gallery.toggle-active');
+        Route::post('landing-gallery/bulk-approve', [App\Http\Controllers\Admin\LandingGalleryController::class, 'bulkApprove'])->name('landing-gallery.bulk-approve');
+        Route::post('landing-gallery/bulk-delete', [App\Http\Controllers\Admin\LandingGalleryController::class, 'bulkDelete'])->name('landing-gallery.bulk-delete');
+    });
+
     // Trash Management (SuperUser Only)
     Route::middleware('role:SuperUser')->prefix('admin/trash')->name('admin.trash.')->group(function () {
         Route::get('/', [App\Http\Controllers\TrashController::class, 'index'])->name('index');
@@ -110,8 +142,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/restore-bulk', [App\Http\Controllers\TrashController::class, 'restoreBulk'])->name('restore-bulk');
     });
 
-    // Client Portal (For Clients)
-    Route::middleware('role:User')->prefix('portal')->name('client.')->group(function () {
+    // Client Portal (For Clients/Users)
+    Route::middleware('role:Client|User')->prefix('portal')->name('client.')->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\Client\ClientDashboardController::class, 'index'])->name('dashboard');
         Route::get('/requests/{clientRequest}', [App\Http\Controllers\Client\ClientDashboardController::class, 'show'])->name('requests.show');
         Route::get('/recommendations/{recommendation}', [App\Http\Controllers\Client\ClientDashboardController::class, 'showRecommendation'])->name('recommendations.show');
@@ -136,6 +168,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/event-vendor-items/{item}', [App\Http\Controllers\EventVendorItemController::class, 'destroy'])->name('events.vendor-items.destroy');
 
     Route::resource('vendors', VendorController::class);
+
+    // General Services Management - accessible to Owner and Admin roles
+    Route::resource('services', \App\Http\Controllers\ServiceController::class)
+        ->middleware('can:manage_services');
 
     // --- INVOICE & PAYMENT ROUTES ---
 
@@ -198,10 +234,10 @@ Route::middleware('auth')->group(function () {
         // Business Profile Routes
         Route::get('/business-profile', [\App\Http\Controllers\VendorBusinessProfileController::class, 'edit'])
             ->name('business-profile.edit')
-            ->middleware('role:Vendor');
+            ->middleware('role:Vendor|Owner|Admin');
         Route::put('/business-profile', [\App\Http\Controllers\VendorBusinessProfileController::class, 'update'])
             ->name('business-profile.update')
-            ->middleware('role:Vendor');
+            ->middleware('role:Vendor|Owner|Admin');
         
         // Debug route (temporary - remove in production)
         Route::get('/business-profile/debug', function() {

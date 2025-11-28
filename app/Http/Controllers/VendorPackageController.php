@@ -13,9 +13,9 @@ class VendorPackageController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
-        
-        $packages = $vendor->packages()->with('services')->latest()->paginate(10);
+        if (!$user->can('manage_packages') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403, 'Unauthorized action.');
+        }
         
         return view('vendor.packages.index', compact('packages', 'vendor'));
     }
@@ -23,7 +23,23 @@ class VendorPackageController extends Controller
     public function create()
     {
         $user = Auth::user();
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
+        if (!$user->can('manage_packages') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403);
+        }
+
+        $vendor = null;
+        if ($user->hasRole('Vendor') || $user->hasRole('Owner')) {
+            $vendor = $user->vendor;
+        } elseif ($user->hasRole('Admin') || $user->hasRole('Staff')) {
+            $owner = \App\Models\User::find($user->owner_id);
+            if ($owner) {
+                $vendor = $owner->vendor;
+            }
+        }
+
+        if (!$vendor) {
+            abort(404, 'Vendor profile not found.');
+        }
         
         // Get all services for this vendor
         $services = $vendor->products;
@@ -34,7 +50,23 @@ class VendorPackageController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
+        if (!$user->can('manage_packages') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403);
+        }
+
+        $vendor = null;
+        if ($user->hasRole('Vendor') || $user->hasRole('Owner')) {
+            $vendor = $user->vendor;
+        } elseif ($user->hasRole('Admin') || $user->hasRole('Staff')) {
+            $owner = \App\Models\User::find($user->owner_id);
+            if ($owner) {
+                $vendor = $owner->vendor;
+            }
+        }
+
+        if (!$vendor) {
+            abort(404, 'Vendor profile not found.');
+        }
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -86,7 +118,23 @@ class VendorPackageController extends Controller
     public function edit(VendorPackage $package)
     {
         $user = Auth::user();
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
+        if (!$user->can('manage_packages') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403);
+        }
+
+        $vendor = null;
+        if ($user->hasRole('Vendor') || $user->hasRole('Owner')) {
+            $vendor = $user->vendor;
+        } elseif ($user->hasRole('Admin') || $user->hasRole('Staff')) {
+            $owner = \App\Models\User::find($user->owner_id);
+            if ($owner) {
+                $vendor = $owner->vendor;
+            }
+        }
+
+        if (!$vendor) {
+            abort(404, 'Vendor profile not found.');
+        }
         
         // Ensure package belongs to this vendor
         if ($package->vendor_id !== $vendor->id) {
@@ -102,7 +150,23 @@ class VendorPackageController extends Controller
     public function update(Request $request, VendorPackage $package)
     {
         $user = Auth::user();
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
+        if (!$user->can('manage_packages') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403);
+        }
+
+        $vendor = null;
+        if ($user->hasRole('Vendor') || $user->hasRole('Owner')) {
+            $vendor = $user->vendor;
+        } elseif ($user->hasRole('Admin') || $user->hasRole('Staff')) {
+            $owner = \App\Models\User::find($user->owner_id);
+            if ($owner) {
+                $vendor = $owner->vendor;
+            }
+        }
+
+        if (!$vendor) {
+            abort(404, 'Vendor profile not found.');
+        }
         
         // Ensure package belongs to this vendor
         if ($package->vendor_id !== $vendor->id) {
@@ -162,7 +226,23 @@ class VendorPackageController extends Controller
     public function destroy(VendorPackage $package)
     {
         $user = Auth::user();
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
+        if (!$user->can('manage_packages') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
+            abort(403);
+        }
+
+        $vendor = null;
+        if ($user->hasRole('Vendor') || $user->hasRole('Owner')) {
+            $vendor = $user->vendor;
+        } elseif ($user->hasRole('Admin') || $user->hasRole('Staff')) {
+            $owner = \App\Models\User::find($user->owner_id);
+            if ($owner) {
+                $vendor = $owner->vendor;
+            }
+        }
+
+        if (!$vendor) {
+            abort(404, 'Vendor profile not found.');
+        }
         
         // Ensure package belongs to this vendor
         if ($package->vendor_id !== $vendor->id) {

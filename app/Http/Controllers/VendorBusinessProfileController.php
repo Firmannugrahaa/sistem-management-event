@@ -17,14 +17,20 @@ class VendorBusinessProfileController extends Controller
     {
         $user = Auth::user();
         
-        // Check if user has Vendor role
-        if (!$user->hasRole('Vendor')) {
+        // Check if user has Vendor, Owner, or Admin role
+        if (!$user->hasRole(['Vendor', 'Owner', 'Admin'])) {
             abort(403, 'Unauthorized access');
+        }
+
+        // For Admin/Staff, get the Owner's vendor profile
+        $userId = $user->id;
+        if ($user->hasRole(['Admin', 'Staff']) && $user->owner_id) {
+            $userId = $user->owner_id;
         }
 
         // Get or create vendor profile
         $vendor = Vendor::firstOrCreate(
-            ['user_id' => $user->id],
+            ['user_id' => $userId],
             [
                 'contact_person' => $user->name,
                 'phone_number' => $user->phone ?? '',
@@ -44,11 +50,17 @@ class VendorBusinessProfileController extends Controller
     {
         $user = Auth::user();
         
-        if (!$user->hasRole('Vendor')) {
+        if (!$user->hasRole(['Vendor', 'Owner', 'Admin'])) {
             abort(403, 'Unauthorized access');
         }
 
-        $vendor = Vendor::where('user_id', $user->id)->firstOrFail();
+        // For Admin/Staff, update the Owner's vendor profile
+        $userId = $user->id;
+        if ($user->hasRole(['Admin', 'Staff']) && $user->owner_id) {
+            $userId = $user->owner_id;
+        }
+
+        $vendor = Vendor::where('user_id', $userId)->firstOrFail();
 
         $validated = $request->validate([
             'brand_name' => 'nullable|string|max:255',
@@ -97,7 +109,7 @@ class VendorBusinessProfileController extends Controller
                 Storage::disk('public')->delete($vendor->logo_path);
             }
 
-            $logoPath = $request->file('logo')->store('vendor-logos', 'public');
+           $logoPath = $request->file('logo')->store('vendor-logos', 'public');
             $validated['logo_path'] = $logoPath;
         }
 
@@ -132,8 +144,8 @@ class VendorBusinessProfileController extends Controller
 
         $vendor->update($validated);
 
-        return redirect()->route('vendor.business-profile.edit')
-            ->with('success', 'Business profile updated successfully!');
+        return redirect()->route('dashboard')
+            ->with('success', 'Profil bisnis berhasil diperbarui! Selamat datang di dashboard Anda.');
     }
 
     /**
@@ -156,6 +168,40 @@ class VendorBusinessProfileController extends Controller
             abort(404);
         }
 
-        return view('vendor.business-profile.show', compact('vendor'));
+        // Get testimonials from completed events (if columns exist)
+        try {
+            $testimonials = \App\Models\Event::where('events.user_id', $vendor->user_id)
+                ->whereHas('vendors', function($q) use ($vendor) {
+                    $q->where('vendors.id', $vendor->id);
+                })
+                ->where('status', 'completed')
+                ->whereNotNull('client_feedback')
+                ->where('client_feedback', '!=', '')
+                ->with(['user'])
+                ->latest()
+                ->take(10)
+                ->get()
+                ->map(function($event) {
+                    return [
+                        'client_name' => $event->user->name ?? $event->client_name,
+                        'event_name' => $event->name,
+                        'event_date' => $event->event_date,
+                        'feedback' => $event->client_feedback,
+                        'rating' => $event->client_rating ?? 5,
+                    ];
+                });
+        } catch (\Exception $e) {
+            // If column doesn't exist, return empty collection
+            $testimonials = collect([]);
+        }
+
+        // Get catalog items (for vendors that have them)
+        $catalogItems = $vendor->catalogItems()
+            ->with(['images', 'category'])
+            ->where('status', 'available')
+            ->latest()
+            ->get();
+
+        return view('vendor.business-profile.show', compact('vendor', 'testimonials', 'catalogItems'));
     }
 }

@@ -49,23 +49,46 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // Assign 'Client' role to newly registered users
-        // Create the role if it doesn't exist
+        // Assign 'Client' role to newly registered users (User role also works interchangeably)
         $clientRole = Role::firstOrCreate(['name' => 'Client']);
         $user->assignRole($clientRole);
 
-        // Create client profile automatically
-        $user->clientProfile()->create();
-
         event(new Registered($user));
-
         Auth::login($user);
 
-        // Redirect new client users to the landing page instead of dashboard
-        if ($user->hasRole('Client')) {
-            return redirect()->route('landing.page');
-        } else {
-            return redirect()->route('dashboard');
+        // Check if there's a pending booking from public form
+        $pendingBooking = session('pending_booking');
+        
+        if ($pendingBooking) {
+            // Create ClientRequest automatically
+            $clientRequest = \App\Models\ClientRequest::create([
+                'user_id' => $user->id,
+                'client_name' => $pendingBooking['client_name'],
+                'client_email' => $pendingBooking['client_email'],
+                'client_phone' => $pendingBooking['client_phone'],
+                'event_date' => $pendingBooking['event_date'],
+                'budget' => $pendingBooking['budget'] ?? null,
+                'event_type' => $pendingBooking['event_type'],
+                'message' => $pendingBooking['message'] ?? null,
+                'vendor_id' => $pendingBooking['vendor_id'] ?? null,
+                'status' => 'pending',
+                'detailed_status' => 'new',
+                'request_source' => 'public_booking_form',
+            ]);
+
+            // Clear the session
+            session()->forget('pending_booking');
+
+            // Redirect with modal flag
+            return redirect()->route('landing.page')
+                ->with('booking_created', true)
+                ->with('show_redirect_modal', true)
+                ->with('success', 'Akun berhasil dibuat dan booking Anda telah dikirim!');
         }
+
+        // Regular registration (no booking) - redirect to dashboard
+        return redirect()->route('client.dashboard')
+            ->with('success', 'Selamat datang! Akun Anda berhasil dibuat.');
     }
+
 }

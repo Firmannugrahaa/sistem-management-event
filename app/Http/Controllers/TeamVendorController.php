@@ -59,12 +59,6 @@ class TeamVendorController extends Controller
                 ->flatMap->roles
                 ->unique('id')
                 ->values();
-            $teamMembers = User::where('owner_id', auth()->id())
-                ->whereDoesntHave('roles', function ($query) {
-                    $query->where('name', 'Vendor');
-                })
-                ->with('roles')
-                ->paginate(10);
         } elseif ($view === 'vendor') {
             $query = Vendor::whereHas('user', function ($q) use ($teamOwnerId) {
                 $q->where('owner_id', $teamOwnerId)

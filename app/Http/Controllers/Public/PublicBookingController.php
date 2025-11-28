@@ -20,7 +20,7 @@ class PublicBookingController extends Controller
     }
 
     /**
-     * Store the booking request (before auth)
+     * Store the booking request
      */
     public function storeBooking(Request $request)
     {
@@ -35,10 +35,32 @@ class PublicBookingController extends Controller
             'vendor_id' => 'nullable|exists:vendors,id',
         ]);
 
-        // Store booking data in session
+        // Check if user is already logged in
+        if (auth()->check()) {
+            // User sudah login - langsung create ClientRequest
+            $clientRequest = ClientRequest::create([
+                'user_id' => auth()->id(),
+                'client_name' => $validated['client_name'],
+                'client_email' => $validated['client_email'],
+                'client_phone' => $validated['client_phone'],
+                'event_date' => $validated['event_date'],
+                'budget' => $validated['budget'] ?? null,
+                'event_type' => $validated['event_type'],
+                'message' => $validated['message'] ?? null,
+                'vendor_id' => $validated['vendor_id'] ?? null,
+                'status' => 'pending',
+                'detailed_status' => 'new',
+                'request_source' => 'public_booking_form',
+            ]);
+
+            // Redirect ke client dashboard dengan success
+            return redirect()->route('client.dashboard')
+                ->with('success', 'Booking Anda berhasil dikirim! Tim kami akan segera menghubungi Anda.');
+        }
+
+        // User belum login - save ke session dan redirect ke register
         Session::put('pending_booking', $validated);
 
-        // Redirect to login/register with intent
         return redirect()->route('register')
             ->with('booking_intent', true)
             ->with('info', 'Silakan daftar atau login untuk melanjutkan booking Anda.');
