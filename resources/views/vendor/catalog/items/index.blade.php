@@ -1,10 +1,13 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-2xl text-[#1A1A1A] leading-tight">
-                {{ __('Katalog Produk / Inventaris') }}
-            </h2>
-            <div class="flex gap-3">
+        <h2 class="font-semibold text-2xl text-[#1A1A1A] leading-tight">
+            {{ __('Katalog Produk / Inventaris') }}
+        </h2>
+    </x-slot>
+
+    <div class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-end gap-3 mb-6">
                 <a href="{{ route('vendor.catalog.categories.index') }}" 
                    class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition">
                     Kelola Kategori
@@ -17,11 +20,6 @@
                     Tambah Produk
                 </a>
             </div>
-        </div>
-    </x-slot>
-
-    <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             @if (session('success'))
                 <div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
                     {{ session('success') }}

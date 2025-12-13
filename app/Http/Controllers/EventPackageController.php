@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\EventPackage;
 use App\Models\EventPackageItem;
-use App\Models\VendorProduct;
+use App\Models\VendorCatalogItem;
 use App\Models\User;
+use App\Models\VendorPackage;
 use App\Models\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +26,7 @@ class EventPackageController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $packages = EventPackage::with('items.vendorProduct.vendor')
+        $packages = EventPackage::with('items.vendorCatalogItem.vendor')
             ->latest()
             ->paginate(10);
 
@@ -42,10 +43,11 @@ class EventPackageController extends Controller
             abort(403);
         }
 
-        // Get all vendor products from all vendors
-        $vendorProducts = VendorProduct::with('vendor')->get();
+        // Get all vendor products and packages
+        $vendorCatalogItems = VendorCatalogItem::with('vendor')->where('status', 'available')->get();
+        $vendorPackages = VendorPackage::with('vendor')->get();
 
-        return view('event-packages.create', compact('vendorProducts'));
+        return view('event-packages.create', compact('vendorCatalogItems', 'vendorPackages'));
     }
 
     /**
@@ -61,6 +63,7 @@ class EventPackageController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',
+            'event_type' => 'required|string|in:Wedding,Prewedding,Birthday,Corporate,Conference,Engagement,Other',
             'base_price' => 'required|numeric|min:0',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'markup_percentage' => 'nullable|numeric|min:0|max:100',
@@ -71,8 +74,10 @@ class EventPackageController extends Controller
             'is_featured' => 'nullable|boolean',
             'pricing_method' => 'required|in:manual,auto,hybrid',
             'features' => 'nullable|array',
+            'features' => 'nullable|array',
             'items' => 'nullable|array',
-            'items.*.vendor_product_id' => 'required|exists:vendor_products,id',
+            'items.*.type' => 'required|in:product,package',
+            'items.*.id' => 'required|integer',
             'items.*.quantity' => 'required|integer|min:1',
         ]);
 
@@ -98,6 +103,7 @@ class EventPackageController extends Controller
                 'name' => $validated['name'],
                 'slug' => Str::slug($validated['name']),
                 'description' => $validated['description'],
+                'event_type' => $validated['event_type'],
                 'base_price' => $basePrice,
                 'discount_percentage' => $discountPct,
                 'markup_percentage' => $markupPct,
@@ -115,15 +121,34 @@ class EventPackageController extends Controller
             // Add items if provided
             if (isset($validated['items'])) {
                 foreach ($validated['items'] as $item) {
-                    $vendorProduct = VendorProduct::find($item['vendor_product_id']);
-                    
-                    EventPackageItem::create([
-                        'event_package_id' => $package->id,
-                        'vendor_product_id' => $item['vendor_product_id'],
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $vendorProduct->price ?? 0,
-                        'total_price' => ($vendorProduct->price ?? 0) * $item['quantity'],
-                    ]);
+                    $unitPrice = 0;
+                    $productId = null;
+                    $packageId = null;
+
+                    if ($item['type'] === 'product') {
+                        $product = VendorCatalogItem::find($item['id']);
+                        if ($product) {
+                            $unitPrice = $product->price ?? 0;
+                            $productId = $product->id;
+                        }
+                    } elseif ($item['type'] === 'package') {
+                        $vendorPkg = VendorPackage::find($item['id']);
+                        if ($vendorPkg) {
+                            $unitPrice = $vendorPkg->price ?? 0;
+                            $packageId = $vendorPkg->id;
+                        }
+                    }
+
+                    if ($productId || $packageId) {
+                        EventPackageItem::create([
+                            'event_package_id' => $package->id,
+                            'vendor_catalog_item_id' => $productId,
+                            'vendor_package_id' => $packageId,
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $unitPrice,
+                            'total_price' => $unitPrice * $item['quantity'],
+                        ]);
+                    }
                 }
             }
 
@@ -146,7 +171,7 @@ class EventPackageController extends Controller
     {
         $package = EventPackage::where('slug', $slug)
             ->where('is_active', true)
-            ->with('items.vendorProduct.vendor')
+            ->with(['items.vendorCatalogItem.vendor', 'items.vendorPackage.vendor'])
             ->firstOrFail();
         
         $relatedPackages = EventPackage::where('id', '!=', $package->id)
@@ -154,7 +179,25 @@ class EventPackageController extends Controller
             ->limit(3)
             ->get();
 
-        return view('event-packages.show', compact('package', 'relatedPackages'));
+        // Check Existing Bookings for Logged In User
+        $userHasBooking = false;
+        $userHasSamePackage = false;
+        $userEvents = collect([]);
+
+        if (Auth::check()) {
+            $userEvents = \App\Models\Event::where('user_id', Auth::id())
+                ->where('status', '!=', 'cancelled')
+                ->get();
+            
+            $userHasBooking = $userEvents->isNotEmpty();
+            
+            // Check if user has an event with the same package name (Heuristic)
+            $userHasSamePackage = $userEvents->contains(function ($event) use ($package) {
+                return Str::contains(strtolower($event->event_name), strtolower($package->name));
+            });
+        }
+
+        return view('event-packages.show', compact('package', 'relatedPackages', 'userEvents', 'userHasBooking', 'userHasSamePackage'));
     }
 
     /**
@@ -167,10 +210,11 @@ class EventPackageController extends Controller
             abort(403);
         }
 
-        $eventPackage->load('items.vendorProduct.vendor');
-        $vendorProducts = VendorProduct::with('vendor')->get();
+        $eventPackage->load('items.vendorCatalogItem.vendor', 'items.vendorPackage.vendor');
+        $vendorCatalogItems = VendorCatalogItem::with('vendor')->where('status', 'available')->get();
+        $vendorPackages = VendorPackage::with('vendor')->get();
 
-        return view('event-packages.edit', compact('eventPackage', 'vendorProducts'));
+        return view('event-packages.edit', compact('eventPackage', 'vendorCatalogItems', 'vendorPackages'));
     }
 
     /**
@@ -186,6 +230,7 @@ class EventPackageController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',
+            'event_type' => 'required|string|in:Wedding,Prewedding,Birthday,Corporate,Conference,Engagement,Other',
             'base_price' => 'required|numeric|min:0',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'markup_percentage' => 'nullable|numeric|min:0|max:100',
@@ -196,8 +241,10 @@ class EventPackageController extends Controller
             'is_featured' => 'nullable|boolean',
             'pricing_method' => 'required|in:manual,auto,hybrid',
             'features' => 'nullable|array',
+            'features' => 'nullable|array',
             'items' => 'nullable|array',
-            'items.*.vendor_product_id' => 'required|exists:vendor_products,id',
+            'items.*.type' => 'required|in:product,package',
+            'items.*.id' => 'required|integer',
             'items.*.quantity' => 'required|integer|min:1',
         ]);
 
@@ -216,6 +263,7 @@ class EventPackageController extends Controller
                 'name' => $validated['name'],
                 'slug' => Str::slug($validated['name']),
                 'description' => $validated['description'],
+                'event_type' => $validated['event_type'],
                 'base_price' => $basePrice,
                 'discount_percentage' => $discountPct,
                 'markup_percentage' => $markupPct,
@@ -248,15 +296,34 @@ class EventPackageController extends Controller
                 $eventPackage->items()->delete();
 
                 foreach ($validated['items'] as $item) {
-                    $vendorProduct = VendorProduct::find($item['vendor_product_id']);
-                    
-                    EventPackageItem::create([
-                        'event_package_id' => $eventPackage->id,
-                        'vendor_product_id' => $item['vendor_product_id'],
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $vendorProduct->price ?? 0,
-                        'total_price' => ($vendorProduct->price ?? 0) * $item['quantity'],
-                    ]);
+                    $unitPrice = 0;
+                    $productId = null;
+                    $packageId = null;
+
+                    if ($item['type'] === 'product') {
+                        $product = VendorCatalogItem::find($item['id']);
+                        if ($product) {
+                            $unitPrice = $product->price ?? 0;
+                            $productId = $product->id;
+                        }
+                    } elseif ($item['type'] === 'package') {
+                        $vendorPkg = VendorPackage::find($item['id']);
+                        if ($vendorPkg) {
+                            $unitPrice = $vendorPkg->price ?? 0;
+                            $packageId = $vendorPkg->id;
+                        }
+                    }
+
+                    if ($productId || $packageId) {
+                        EventPackageItem::create([
+                            'event_package_id' => $eventPackage->id,
+                            'vendor_catalog_item_id' => $productId,
+                            'vendor_package_id' => $packageId,
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $unitPrice,
+                            'total_price' => $unitPrice * $item['quantity'],
+                        ]);
+                    }
                 }
             }
 

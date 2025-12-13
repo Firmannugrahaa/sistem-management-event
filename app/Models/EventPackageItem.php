@@ -11,10 +11,19 @@ class EventPackageItem extends Model
 
     protected $fillable = [
         'event_package_id',
-        'vendor_product_id',
+        'vendor_catalog_item_id',
+        'vendor_package_id',
         'custom_item_name',
         'quantity',
+        'unit_price',
+        'total_price',
     ];
+
+    // Accessor for item name
+    public function getItemNameAttribute()
+    {
+        return $this->custom_item_name ?? $this->vendorCatalogItem->name ?? 'Item Paket';
+    }
 
     public function package()
     {
@@ -26,8 +35,13 @@ class EventPackageItem extends Model
         return $this->belongsTo(VendorProduct::class, 'vendor_product_id');
     }
 
-    public function vendorProduct()
+    public function vendorCatalogItem()
     {
-        return $this->belongsTo(VendorProduct::class, 'vendor_product_id');
+        return $this->belongsTo(VendorCatalogItem::class, 'vendor_catalog_item_id');
+    }
+
+    public function vendorPackage()
+    {
+        return $this->belongsTo(VendorPackage::class, 'vendor_package_id');
     }
 }

@@ -1,14 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-2xl text-[#1A1A1A] leading-tight">
-            {{ __('Portfolio / Galeri') }}
+            {{ __('Company Portfolio / Galeri') }}
         </h2>
     </x-slot>
 
     <div class="py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-end mb-6">
-                <a href="{{ route('vendor.portfolios.create') }}" 
+                <a href="{{ route('company.portfolios.create') }}" 
                    class="px-4 py-2 bg-[#012A4A] text-white rounded-lg font-medium hover:bg-[#013d70] transition flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -29,7 +29,7 @@
                             <!-- Cover Image -->
                             <div class="relative h-48 bg-gray-100">
                                 @if($portfolio->coverImage)
-                                    <img src="{{ asset('storage/' . $portfolio->coverImage->image_path) }}" 
+                                    <img src="{{ asset('storage/' . $portfolio->coverImage) }}" 
                                          alt="{{ $portfolio->title }}" 
                                          class="w-full h-full object-cover">
                                 @else
@@ -62,13 +62,13 @@
                                         {{ $portfolio->created_at->format('d M Y') }}
                                     </span>
                                     <div class="flex items-center gap-2">
-                                        <a href="{{ route('vendor.portfolios.edit', $portfolio->id) }}" 
+                                        <a href="{{ route('company.portfolios.edit', $portfolio->id) }}" 
                                            class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                             </svg>
                                         </a>
-                                        <form action="{{ route('vendor.portfolios.destroy', $portfolio->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus project ini?');">
+                                        <form action="{{ route('company.portfolios.destroy', $portfolio->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus project ini?');">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
@@ -95,8 +95,8 @@
                         </svg>
                     </div>
                     <h3 class="text-lg font-medium text-gray-900 mb-2">Belum ada portfolio</h3>
-                    <p class="text-gray-500 mb-6">Mulai tambahkan hasil karya terbaik Anda untuk menarik klien.</p>
-                    <a href="{{ route('vendor.portfolios.create') }}" 
+                    <p class="text-gray-500 mb-6">Mulai tambahkan hasil karya terbaik Anda.</p>
+                    <a href="{{ route('company.portfolios.create') }}" 
                        class="inline-flex items-center px-4 py-2 bg-[#012A4A] text-white rounded-lg font-medium hover:bg-[#013d70] transition">
                         Tambah Project Pertama
                     </a>

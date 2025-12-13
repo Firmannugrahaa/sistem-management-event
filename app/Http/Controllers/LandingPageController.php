@@ -25,7 +25,7 @@ class LandingPageController extends Controller
         }
 
         // Mengambil data portfolio, venue, dan vendor
-        $portfolios = Portfolio::limit(6)->get();
+        $portfolios = Portfolio::with('images')->where('status', 'published')->orderBy('order', 'asc')->limit(6)->get();
         
         // Get venues from vendors with "Venue" service type
         $venueVendors = Vendor::with(['user', 'serviceType', 'portfolios'])
@@ -128,12 +128,37 @@ class LandingPageController extends Controller
             ->get();
 
         // Get Event Packages (Admin Created)
-        $eventPackages = \App\Models\EventPackage::where('is_active', true)->latest()->get();
+        $eventPackages = \App\Models\EventPackage::with('items.vendorCatalogItem')->where('is_active', true)->latest()->get();
 
-        // Get Landing Gallery Items (Approved only)
-        $galleryItems = LandingGallery::approved()
+        // Get Gallery Items: Merge Curated Portfolio Images AND Manual Landing Gallery Items
+        $curatedImages = \App\Models\PortfolioImage::where('is_featured_in_gallery', true)
+            ->with('portfolio')
+            ->latest()
+            ->get()
+            ->map(function ($image) {
+                // Ensure category is compatible with frontend filters (lowercase slug)
+                $catSlug = \Illuminate\Support\Str::slug($image->portfolio->category ?? 'other');
+                // Map to common structure
+                return (object) [
+                    'image_path' => $image->image_path,
+                    'title' => $image->portfolio->title ?? 'Gallery Image',
+                    'category' => $catSlug, 
+                    'category_label' => $image->portfolio->category ?? 'Other',
+                    'is_featured' => false,
+                    'created_at' => $image->created_at 
+                ];
+            });
+
+        $manualGalleryItems = LandingGallery::approved()
             ->ordered()
-            ->get();
+            ->get()
+            ->map(function ($item) {
+                 $item->category_label = ucfirst($item->category);
+                 return $item;
+            });
+
+        // Merge and sort by newest
+        $galleryItems = $curatedImages->merge($manualGalleryItems)->sortByDesc('created_at');
 
         return view('landing-page.index', compact('portfolios', 'venueVendors', 'catalogVenues', 'vendors', 'additionalVendors', 'companySetting', 'showClientDashboardAccess', 'eventPackages', 'galleryItems'));
     }

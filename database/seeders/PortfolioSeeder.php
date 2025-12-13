@@ -34,16 +34,6 @@ class PortfolioSeeder extends Seeder
         ]);
 
         Portfolio::create([
-            'title' => 'Pesta Ulang Tahun Anak Tema Princess',
-            'description' => 'Pesta ulang tahun anak dengan tema princess yang menakjubkan. Dekorasi penuh warna dengan elemen interaktif untuk anak-anak.',
-            'image' => 'https://images.unsplash.com/photo-1530103862676-de3c9a59af38?auto=format&fit=crop&w=800&q=80',
-            'client' => 'Keluarga Pratama',
-            'project_date' => '2024-09-10',
-            'category' => 'Children Party',
-            'location' => 'Rumah Pribadi, Surabaya'
-        ]);
-
-        Portfolio::create([
             'title' => 'Product Launch Gadget Terbaru',
             'description' => 'Peluncuran produk gadget terbaru dengan tampilan futuristik dan teknologi canggih. Acara ini menarik perhatian media dan influencer teknologi.',
             'image' => 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&w=800&q=80',

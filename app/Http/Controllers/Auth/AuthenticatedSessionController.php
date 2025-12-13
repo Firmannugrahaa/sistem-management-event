@@ -14,9 +14,11 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('auth.login');
+        // Pass redirect URL to view if it exists
+        $redirect = $request->query('redirect');
+        return view('auth.login', compact('redirect'));
     }
 
     /**
@@ -30,9 +32,16 @@ class AuthenticatedSessionController extends Controller
 
         $user = auth()->user();
 
+        // Check if there's a redirect parameter
+        $redirectUrl = $request->input('redirect');
+
         // Role-based redirection
-        if ($user->hasRole('User')) {
-            // Client users (role: User) should go to the main landing page after login
+        if ($user->hasRole('User') || $user->hasRole('Client')) {
+            // If redirect URL exists, redirect there (for booking flow)
+            if ($redirectUrl) {
+                return redirect($redirectUrl);
+            }
+            // Otherwise, client users should go to the main landing page after login
             return redirect()->route('landing.page');
         } else if ($user->hasRole('Vendor')) {
             // Vendor users should complete their business profile first

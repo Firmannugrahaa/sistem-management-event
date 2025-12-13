@@ -1,21 +1,21 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-2xl text-[#1A1A1A] leading-tight">
-                {{ __('Event Packages') }}
-            </h2>
-            <a href="{{ route('event-packages.create') }}" 
-               class="px-4 py-2 bg-[#012A4A] text-white rounded-lg font-medium hover:bg-[#013d70] transition flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Buat Event Package
-            </a>
-        </div>
+        <h2 class="font-semibold text-2xl text-[#1A1A1A] leading-tight">
+            {{ __('Event Packages') }}
+        </h2>
     </x-slot>
 
     <div class="py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-end mb-6">
+                <a href="{{ route('event-packages.create') }}" 
+                   class="px-4 py-2 bg-[#012A4A] text-white rounded-lg font-medium hover:bg-[#013d70] transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Buat Event Package
+                </a>
+            </div>
             @if (session('success'))
                 <div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
                     {{ session('success') }}
@@ -48,7 +48,7 @@
                                         <div class="text-sm text-gray-500 line-clamp-1">{{ Str::limit($package->description, 60) }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        Rp {{ number_format($package->package_price, 0, ',', '.') }}
+                                        Rp {{ number_format($package->final_price, 0, ',', '.') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {{ $package->items->count() }} item

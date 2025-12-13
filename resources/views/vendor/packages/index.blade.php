@@ -1,20 +1,21 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-2xl text-[#1A1A1A] leading-tight">
-                {{ __('Paket Layanan') }}
-            </h2>
-            <a href="{{ route('vendor.packages.create') }}" class="px-4 py-2 bg-[#012A4A] text-white rounded-lg font-medium hover:bg-[#013d70] transition flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Tambah Paket
-            </a>
-        </div>
+        <h2 class="font-semibold text-2xl text-[#1A1A1A] leading-tight">
+            {{ __('Paket Layanan') }}
+        </h2>
     </x-slot>
 
     <div class="py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-end mb-6">
+                <a href="{{ route((request()->routeIs('company.*') ? 'company' : 'vendor') . '.packages.create') }}" 
+                   class="px-4 py-2 bg-[#012A4A] text-white rounded-lg font-medium hover:bg-[#013d70] transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Tambah Paket
+                </a>
+            </div>
             @if (session('success'))
                 <div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
                     {{ session('success') }}
@@ -88,11 +89,11 @@
 
                                 <!-- Actions -->
                                 <div class="flex gap-2 pt-4 border-t border-gray-100">
-                                    <a href="{{ route('vendor.packages.edit', $package) }}" 
+                                    <a href="{{ route((request()->routeIs('company.*') ? 'company' : 'vendor') . '.packages.edit', $package) }}" 
                                        class="flex-1 text-center px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition text-sm">
                                         Edit
                                     </a>
-                                    <form action="{{ route('vendor.packages.destroy', $package) }}" method="POST" onsubmit="return confirm('Hapus paket ini?');" class="flex-1">
+                                    <form action="{{ route((request()->routeIs('company.*') ? 'company' : 'vendor') . '.packages.destroy', $package) }}" method="POST" onsubmit="return confirm('Hapus paket ini?');" class="flex-1">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="w-full px-4 py-2 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition text-sm">
@@ -117,7 +118,7 @@
                     </div>
                     <h3 class="text-lg font-medium text-gray-900 mb-2">Belum Ada Paket</h3>
                     <p class="text-gray-500 mb-6">Buat paket layanan untuk menarik lebih banyak customer.</p>
-                    <a href="{{ route('vendor.packages.create') }}" 
+                    <a href="{{ route((request()->routeIs('company.*') ? 'company' : 'vendor') . '.packages.create') }}" 
                        class="inline-flex items-center px-6 py-3 bg-[#012A4A] text-white rounded-lg font-medium hover:bg-[#013d70] transition">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>

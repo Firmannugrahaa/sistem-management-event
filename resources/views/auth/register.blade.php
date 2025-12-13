@@ -61,6 +61,10 @@
 
                 <form method="POST" action="{{ route('register') }}" class="mt-8 space-y-6">
                     @csrf
+                    
+                    @if(request()->has('return_url'))
+                        <input type="hidden" name="return_url" value="{{ request('return_url') }}">
+                    @endif
 
                     <!-- Name -->
                     <div class="space-y-2">

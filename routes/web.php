@@ -117,6 +117,9 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['role:Owner|Admin|SuperUser'])->prefix('company')->name('company.')->group(function () {
         Route::resource('products', App\Http\Controllers\CompanyProductController::class);
         Route::resource('packages', App\Http\Controllers\CompanyPackageController::class);
+        Route::resource('portfolios', App\Http\Controllers\CompanyPortfolioController::class);
+        Route::delete('/portfolios/images/{id}', [App\Http\Controllers\CompanyPortfolioController::class, 'destroyImage'])->name('portfolios.images.destroy');
+        Route::post('/portfolios/images/{id}/toggle-gallery', [App\Http\Controllers\CompanyPortfolioController::class, 'toggleGalleryStatus'])->name('portfolios.images.toggle-gallery');
     });
 
     // Event Packages Management (Admin/Owner Only)

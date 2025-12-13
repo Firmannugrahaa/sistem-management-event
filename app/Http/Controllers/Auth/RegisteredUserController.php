@@ -86,6 +86,16 @@ class RegisteredUserController extends Controller
                 ->with('success', 'Akun berhasil dibuat dan booking Anda telah dikirim!');
         }
 
+        // Check if there is a specific return_url parameter
+        if ($request->has('return_url')) {
+            return redirect($request->return_url)->with('success', 'Selamat datang! Akun Anda berhasil dibuat. Silahkan lanjutkan booking Anda.');
+        }
+
+        // Check if there is an intended URL in session
+        if (session()->has('url.intended')) {
+            return redirect()->intended()->with('success', 'Selamat datang! Akun Anda berhasil dibuat.');
+        }
+
         // Regular registration (no booking) - redirect to dashboard
         return redirect()->route('client.dashboard')
             ->with('success', 'Selamat datang! Akun Anda berhasil dibuat.');

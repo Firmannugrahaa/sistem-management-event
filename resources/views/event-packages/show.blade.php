@@ -55,7 +55,28 @@
                             <p class="mb-6">{{ $package->description }}</p>
 
                             <h3 class="text-xl font-semibold text-gray-800 mb-3">Apa yang Anda Dapatkan?</h3>
-                            @if($package->features && is_array($package->features))
+                            @if($package->items->count() > 0)
+                                <ul class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    @foreach($package->items as $item)
+                                        <li class="flex items-start">
+                                            <svg class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            <div>
+                                                <span class="text-gray-700 font-medium">{{ $item->item_name }}</span>
+                                                @if($item->quantity > 1)
+                                                    <span class="text-xs text-gray-500 ml-1">x {{ $item->quantity }}</span>
+                                                @endif
+                                                @if($item->vendorCatalogItem && $item->vendorCatalogItem->vendor)
+                                                    <p class="text-xs text-gray-400">by {{ $item->vendorCatalogItem->vendor->brand_name ?? 'Vendor' }}</p>
+                                                @elseif($item->vendorPackage && $item->vendorPackage->vendor)
+                                                    <p class="text-xs text-gray-400">by {{ $item->vendorPackage->vendor->brand_name ?? 'Vendor' }}</p>
+                                                @endif
+                                            </div>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @elseif($package->features && is_array($package->features))
                                 <ul class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     @foreach($package->features as $feature)
                                         <li class="flex items-start">
@@ -66,6 +87,8 @@
                                         </li>
                                     @endforeach
                                 </ul>
+                            @else
+                                <p class="text-gray-500 italic">Detail paket belum tersedia.</p>
                             @endif
                         </div>
                     </div>
@@ -76,14 +99,14 @@
                     <div class="bg-white rounded-2xl shadow-lg p-8 sticky top-24">
                         <div class="mb-6">
                             <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">Harga Mulai Dari</p>
-                            @if($package->discount_price)
+                            @if($package->base_price > $package->final_price)
                                 <div class="flex flex-col">
-                                    <span class="text-gray-400 line-through text-lg">Rp {{ number_format($package->price, 0, ',', '.') }}</span>
-                                    <span class="text-4xl font-bold text-primary">Rp {{ number_format($package->discount_price, 0, ',', '.') }}</span>
-                                    <span class="text-sm text-red-500 font-semibold mt-1">Hemat {{ number_format((($package->price - $package->discount_price) / $package->price) * 100, 0) }}%</span>
+                                    <span class="text-gray-400 line-through text-lg">Rp {{ number_format($package->base_price, 0, ',', '.') }}</span>
+                                    <span class="text-4xl font-bold text-primary">Rp {{ number_format($package->final_price, 0, ',', '.') }}</span>
+                                    <span class="text-sm text-red-500 font-semibold mt-1">Hemat {{ number_format((($package->base_price - $package->final_price) / $package->base_price) * 100, 0) }}%</span>
                                 </div>
                             @else
-                                <span class="text-4xl font-bold text-primary">Rp {{ number_format($package->price, 0, ',', '.') }}</span>
+                                <span class="text-4xl font-bold text-primary">Rp {{ number_format($package->final_price, 0, ',', '.') }}</span>
                             @endif
                         </div>
 
@@ -143,7 +166,7 @@
                                 </div>
                                 <div class="p-5">
                                     <h3 class="font-bold text-gray-800 mb-2 group-hover:text-primary transition">{{ $related->name }}</h3>
-                                    <p class="text-primary font-bold">Rp {{ number_format($related->price, 0, ',', '.') }}</p>
+                                    <p class="text-primary font-bold">Rp {{ number_format($related->final_price, 0, ',', '.') }}</p>
                                 </div>
                             </a>
                         @endforeach
@@ -155,40 +178,46 @@
 
     <script>
         function confirmSelection() {
-            const existingEventId = document.getElementById('existingEventSelect')?.value;
-            
-            Swal.fire({
-                title: 'Pilih Paket Ini?',
-                text: "Anda akan diarahkan ke halaman booking untuk melengkapi detail acara.",
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#012A4A',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Ya, Lanjutkan!',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Logic to redirect
-                    let url = "{{ route('events.create') }}?package_id={{ $package->id }}";
-                    
-                    if (existingEventId) {
-                        // If user selected an existing event to apply package to
-                        // Ideally we would have a route like 'events.apply-package'
-                        // For now, let's redirect to event edit or show page with a query param
-                        // Or just alert that this feature is coming soon if not implemented
-                        url = "{{ url('/events') }}/" + existingEventId + "/apply-package?package_id={{ $package->id }}";
-                        // Since apply-package route might not exist, let's fallback to create for now or handle it.
-                        // Actually, let's just use the create route for new events as primary flow.
-                        // If existing event is selected, we might need a specific controller action.
-                        
-                        // For this demo, let's stick to creating new booking with package
-                        // But if existing event is selected, we'll append it
-                         url = "{{ route('events.create') }}?package_id={{ $package->id }}&existing_event_id=" + existingEventId;
-                    }
+            const isLoggedIn = {{ Auth::check() ? 'true' : 'false' }};
+            const packageId = "{{ $package->id }}";
+            const createUrl = "{{ route('public.booking.form') }}?package_id=" + packageId;
 
-                    window.location.href = url;
-                }
-            })
+            // If not logged in, show Login/Register prompt
+            if (!isLoggedIn) {
+                Swal.fire({
+                    title: 'Login Diperlukan',
+                    text: "Silahkan login atau daftar akun baru untuk melanjutkan booking paket ini.",
+                    icon: 'info',
+                    showDenyButton: true,
+                    showCancelButton: true,
+                    confirmButtonText: 'Login',
+                    denyButtonText: 'Daftar Akun',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: '#012A4A',
+                    denyButtonColor: '#27AE60',
+                    cancelButtonColor: '#d33'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Login: Redirect to LOGIN PAGE with return URL
+                        const loginUrl = "{{ route('login') }}?redirect=" + encodeURIComponent(createUrl);
+                        window.location.href = loginUrl;
+                    } else if (result.isDenied) {
+                        // Register: Redirect to Register with return_url
+                        const registerUrl = "{{ route('register') }}?return_url=" + encodeURIComponent(createUrl);
+                        window.location.href = registerUrl;
+                    }
+                });
+                return;
+            }
+
+            // If already logged in, go directly to booking form
+            // Duplicate checks will be handled by the controller after redirect
+            const existingEventId = document.getElementById('existingEventSelect')?.value;
+            if (existingEventId) {
+                 window.location.href = createUrl + "&existing_event_id=" + existingEventId;
+            } else {
+                 window.location.href = createUrl;
+            }
         }
     </script>
 @endsection

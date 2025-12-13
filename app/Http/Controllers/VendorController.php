@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vendor;
+use App\Models\ServiceType;
+use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
@@ -14,8 +16,7 @@ class VendorController extends Controller
      */
     public function index()
     {
-        $vendors = Vendor::latest()->paginate(10);
-        return view('vendors.index', compact('vendors'));
+        return redirect()->route('team-vendor.index', ['view' => 'vendor']);
     }
 
     /**
@@ -23,8 +24,7 @@ class VendorController extends Controller
      */
     public function create()
     {
-        $this->authorize('create', Vendor::class);
-        return view('vendors.create');
+        return redirect()->route('team.vendors.create');
     }
 
     /**
@@ -44,7 +44,7 @@ class VendorController extends Controller
 
         Vendor::create($validated);
 
-        return redirect()->route('vendors.index')->with('success', 'Vendor berhasil ditambahkan.');
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', 'Vendor berhasil ditambahkan.');
     }
 
     /**
@@ -83,7 +83,8 @@ class VendorController extends Controller
     public function edit(Vendor $vendor)
     {
         $this->authorize('update', $vendor);
-        return view('vendors.edit', compact('vendor'));
+        $serviceTypes = ServiceType::all();
+        return view('vendors.edit', compact('vendor', 'serviceTypes'));
     }
 
     /**
@@ -92,18 +93,46 @@ class VendorController extends Controller
     public function update(Request $request, Vendor $vendor)
     {
         $this->authorize('update', $vendor);
+        
+        $user = $vendor->user;
+
+        $request->merge([
+            'username' => strtolower($request->username),
+            'email' => strtolower($request->email),
+        ]);
+
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id|unique:vendors,user_id,' . $vendor->id, // Allow same vendor to keep its user_id
+            // User fields
+            'business_name' => 'required|string|max:255',
+            'username' => ['required', 'string', 'max:255', 'alpha_dash', Rule::unique('users')->ignore($user->id)],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+
+            // Vendor fields
             'service_type_id' => 'required|exists:service_types,id',
-            'category' => 'required|string|max:255',
             'contact_person' => 'required|string|max:255',
             'phone_number' => 'required|string|max:20',
             'address' => 'nullable|string',
         ]);
 
-        $vendor->update($validated);
+        // Update User
+        $user->update([
+            'name' => $request->business_name,
+            'username' => $request->username,
+            'email' => $request->email,
+        ]);
 
-        return redirect()->route('vendors.index')->with('success', 'Vendor berhasil diperbarui.');
+        // Update Vendor
+        $serviceType = ServiceType::find($request->service_type_id);
+        
+        $vendor->update([
+            'service_type_id' => $request->service_type_id,
+            'category' => $serviceType->name,
+            'contact_person' => $request->contact_person,
+            'phone_number' => $request->phone_number,
+            'address' => $request->address,
+        ]);
+
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', 'Vendor berhasil diperbarui.');
     }
 
     /**
@@ -113,6 +142,6 @@ class VendorController extends Controller
     {
         $this->authorize('delete', $vendor);
         $vendor->delete();
-        return redirect()->route('vendors.index')->with('success', 'Vendor berhasil dihapus.');
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', 'Vendor berhasil dihapus.');
     }
 }

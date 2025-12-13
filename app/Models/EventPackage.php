@@ -13,6 +13,7 @@ class EventPackage extends Model
         'name',
         'slug',
         'description',
+        'event_type',
         'base_price',
         'discount_percentage',
         'markup_percentage',

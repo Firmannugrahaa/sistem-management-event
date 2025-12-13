@@ -35,17 +35,19 @@ class ClientRequestController extends Controller
             $query->where('assigned_to', $user->id);
         } elseif ($user->hasRole('Vendor')) {
             $query->where('vendor_id', $user->vendor->id ?? 0);
+        } elseif ($user->hasRole('Client') || $user->hasRole('User')) {
+            $query->where('user_id', $user->id);
         }
 
         $pendingRequests = (clone $query)->where('status', 'pending')->orderBy('created_at', 'desc')->get();
         $onProcessRequests = (clone $query)->where('status', 'on_process')->orderBy('created_at', 'desc')->get();
         $doneRequests = (clone $query)->where('status', 'done')->orderBy('created_at', 'desc')->get();
 
-        // Stats
-        $totalRequests = ClientRequest::count();
-        $pendingCount = ClientRequest::where('status', 'pending')->count();
-        $onProcessCount = ClientRequest::where('status', 'on_process')->count();
-        $doneCount = ClientRequest::where('status', 'done')->count();
+        // Stats - Use the filtered query to count
+        $totalRequests = (clone $query)->count();
+        $pendingCount = (clone $query)->where('status', 'pending')->count();
+        $onProcessCount = (clone $query)->where('status', 'on_process')->count();
+        $doneCount = (clone $query)->where('status', 'done')->count();
 
         $canAssign = $user->hasRole('SuperUser') || $user->hasRole('Owner') || $user->hasRole('Admin');
         $staffMembers = $canAssign ? User::role(['Admin', 'Staff'])->get() : collect();

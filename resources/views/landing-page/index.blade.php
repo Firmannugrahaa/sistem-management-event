@@ -21,8 +21,8 @@
                     Event Organizer profesional untuk lamaran, pernikahan, ulang tahun, dan acara korporat yang berkesan
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4">
-                    <a href="#contact" class="bg-[#9CAF88] text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-[#8a9e7a] transition shadow-lg text-center">
-                        Konsultasi Gratis
+                    <a href="{{ route('public.booking.form') }}" class="bg-[#9CAF88] text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-[#8a9e7a] transition shadow-lg text-center">
+                        Book Now
                     </a>
                     <a href="https://wa.me/6281234567890" target="_blank" class="bg-white text-[#8B8680] px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition shadow-lg text-center">
                         Hubungi Kami via WhatsApp
@@ -62,7 +62,7 @@
                     <img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=80" 
                          alt="Wedding Event" 
                          class="rounded-2xl shadow-lg h-64 w-full object-cover">
-                    <img src="https://images.unsplash.com/photo-1519167758481-83f29da8c2bc?auto=format&fit=crop&w=600&q=80" 
+                    <img src="https://images.unsplash.com/photo-1544155892-b2b6c64204fc?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8YmlydGhkYXklMjBwYXJ0eXxlbnwwfHwwfHx8MA%3D%3D" 
                          alt="Birthday Party" 
                          class="rounded-2xl shadow-lg h-64 w-full object-cover mt-8">
                     <img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=80" 
@@ -147,6 +147,64 @@
     </section>
 
     {{-- Gallery Masonry --}}
+    {{-- Company Portfolios Section --}}
+    @if($portfolios->count() > 0)
+    <section id="portfolios" class="py-20 bg-white">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-16">
+                <span class="text-[#27AE60] font-semibold tracking-wider uppercase text-sm">Portfolio Kami</span>
+                <h2 class="text-4xl md:text-5xl font-bold text-[#1A1A1A] mt-2 mb-4">Project Terbaru</h2>
+                <div class="w-24 h-1 bg-[#27AE60] mx-auto rounded-full"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                @foreach($portfolios as $portfolio)
+                <div class="group relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2">
+                    <div class="relative h-72 overflow-hidden">
+                        @if($portfolio->coverImage)
+                            <img src="{{ asset('storage/' . $portfolio->coverImage) }}" 
+                                 alt="{{ $portfolio->title }}" 
+                                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                        @else
+                            <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                <span class="text-gray-400">No Image</span>
+                            </div>
+                        @endif
+                        
+                        <!-- Overlay -->
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    </div>
+                    
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-semibold text-[#27AE60] bg-green-50 px-3 py-1 rounded-full">
+                                {{ $portfolio->category ?? 'Event' }}
+                            </span>
+                            <span class="text-xs text-gray-500 flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                {{ $portfolio->location ?? 'Indonesia' }}
+                            </span>
+                        </div>
+                        <h3 class="text-xl font-bold text-[#1A1A1A] mb-2 group-hover:text-[#27AE60] transition-colors">
+                            {{ $portfolio->title }}
+                        </h3>
+                        <p class="text-sm text-gray-600 line-clamp-2 mb-4">
+                            {{ Str::limit($portfolio->description, 100) }}
+                        </p>
+                        @if($portfolio->client)
+                        <div class="pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                            <span>Klien: <span class="font-medium text-gray-900">{{ $portfolio->client }}</span></span>
+                            <span>{{ $portfolio->project_date ? $portfolio->project_date->format('M Y') : '' }}</span>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
     <section id="gallery" class="py-20 bg-gradient-to-b from-gray-50 to-white">
         <div class="container mx-auto px-6">
             <div class="text-center mb-12">
@@ -239,9 +297,9 @@
                     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8">
                         @php
                         $galleryFallback = [
-                            ['img' => 'https://images.unsplash.com/photo-1519225421980-715cb0202128?w=400', 'category' => 'wedding', 'tall' => true, 'title' => 'Elegant Wedding'],
+                            ['img' => 'https://images.unsplash.com/photo-1550784718-990c6de52adf?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjZ8fHdlZGRpbmd8ZW58MHx8MHx8fDA%3D', 'category' => 'wedding', 'tall' => true, 'title' => 'Elegant Wedding'],
                             ['img' => 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=400', 'category' => 'wedding', 'tall' => false, 'title' => 'Reception Hall'],
-                            ['img' => 'https://images.unsplash.com/photo-1519167758481-83f29da8c2bc?w=400', 'category' => 'birthday', 'tall' => false, 'title' => 'Birthday Celebration'],
+                            ['img' => 'https://images.unsplash.com/photo-1544155891-969f15a055d3?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjZ8fGJpcnRoZGF5JTIwcGFydHl8ZW58MHx8MHx8fDA%3D', 'category' => 'birthday', 'tall' => false, 'title' => 'Birthday Celebration'],
                             ['img' => 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400', 'category' => 'corporate', 'tall' => true, 'title' => 'Corporate Event'],
                             ['img' => 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400', 'category' => 'wedding', 'tall' => false, 'title' => 'Romantic Wedding'],
                             ['img' => 'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=400', 'category' => 'corporate', 'tall' => true, 'title' => 'Business Conference'],
@@ -380,7 +438,7 @@
                         </ul>
 
                         {{-- CTA --}}
-                        <a href="{{ route('event-packages.show', $basicPackage->id) }}" 
+                        <a href="{{ route('event-packages.show', $basicPackage->slug) }}" 
                            class="block w-full text-center bg-gray-100 text-gray-800 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition">
                             Lihat Detail
                         </a>
@@ -393,7 +451,7 @@
                 <div class="bg-gradient-to-br from-[#9CAF88] to-[#8a9e7a] rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-300 overflow-hidden transform md:scale-110 relative z-10">
                     {{-- Popular Badge --}}
                     <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
-                        <span class="bg-[#F4A6A0] text-white px-6 py-2 rounded-full text-sm font-bold shadow-xl animate-pulse">
+                        <span class="bg-[#F4A6A0] text-w hite px-6 py-2 rounded-full text-sm font-bold shadow-xl animate-pulse">
                             🔥 PALING POPULER
                         </span>
                     </div>
@@ -440,7 +498,7 @@
                         </ul>
 
                         {{-- CTA --}}
-                        <a href="{{ route('event-packages.show', $premiumPackage->id) }}" 
+                        <a href="{{ route('event-packages.show', $premiumPackage->slug) }}" 
                            class="block w-full text-center bg-white text-[#9CAF88] px-6 py-4 rounded-xl font-bold hover:bg-gray-50 transition shadow-xl text-lg">
                             Pilih Paket Ini →
                         </a>
@@ -490,7 +548,7 @@
                         </ul>
 
                         {{-- CTA --}}
-                        <a href="{{ route('event-packages.show', $standardPackage->id) }}" 
+                        <a href="{{ route('event-packages.show', $standardPackage->slug) }}" 
                            class="block w-full text-center bg-gray-100 text-gray-800 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition">
                             Lihat Detail
                         </a>
@@ -884,8 +942,8 @@
                 Hubungi PT. Lorem Ipsum sekarang dan biarkan kami membantu mewujudkan momen spesial Anda
             </p>
             <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <a href="#contact" class="bg-white text-[#9CAF88] px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 transition shadow-xl">
-                    Konsultasi Gratis
+                <a href="{{ route('public.booking.form') }}" class="bg-white text-[#9CAF88] px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 transition shadow-xl">
+                    Booking Sekarang
                 </a>
                 <a href="tel:+6281234567890" class="bg-[#F4A6A0] text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-[#e69589] transition shadow-xl">
                     Hubungi: +62 812-3456-7890

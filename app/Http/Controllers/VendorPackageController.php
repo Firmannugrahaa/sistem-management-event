@@ -16,6 +16,18 @@ class VendorPackageController extends Controller
         if (!$user->can('manage_packages') && !$user->hasRole(['Owner', 'Admin', 'SuperUser'])) {
             abort(403, 'Unauthorized action.');
         }
+
+        $vendor = null;
+        if ($user->hasRole('Vendor') || $user->hasRole('Owner')) {
+            $vendor = $user->vendor;
+        } elseif ($user->hasRole('Admin') || $user->hasRole('Staff')) {
+            $owner = \App\Models\User::find($user->owner_id);
+            if ($owner) {
+                $vendor = $owner->vendor;
+            }
+        }
+
+        $packages = $vendor ? $vendor->packages()->paginate(10) : collect();
         
         return view('vendor.packages.index', compact('packages', 'vendor'));
     }

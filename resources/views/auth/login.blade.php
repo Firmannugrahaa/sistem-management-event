@@ -59,6 +59,10 @@
 
                 <form method="POST" action="{{ route('login') }}" class="mt-8 space-y-6">
                     @csrf
+                    
+                    @if(isset($redirect))
+                        <input type="hidden" name="redirect" value="{{ $redirect }}">
+                    @endif
 
                     <!-- Email or Username -->
                     <div class="space-y-2">

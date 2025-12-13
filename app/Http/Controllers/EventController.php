@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\Invoice;
 use App\Models\Vendor;
 use App\Models\Venue;
+use App\Models\EventPackage;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -35,7 +36,7 @@ class EventController extends Controller
     public function create(Request $request)
     {
         // 1. If no mode selected, show Wizard
-        if (!$request->has('client_request_id') && !$request->has('direct_booking')) {
+        if (!$request->has('client_request_id') && !$request->has('direct_booking') && !$request->has('package_id')) {
             // Get approved requests that don't have an event yet
             $approvedRequests = ClientRequest::whereIn('detailed_status', ['approved', 'recommendation_sent'])
                 ->whereDoesntHave('event')
@@ -58,7 +59,12 @@ class EventController extends Controller
             $clientRequest = ClientRequest::findOrFail($request->client_request_id);
         }
 
-        return view('events.create', compact('venues', 'vendorVenues', 'clientRequest'));
+        $package = null;
+        if ($request->has('package_id')) {
+            $package = EventPackage::with('items.vendorCatalogItem', 'items.vendorPackage')->find($request->package_id);
+        }
+
+        return view('events.create', compact('venues', 'vendorVenues', 'clientRequest', 'package'));
     }
 
     /**
