@@ -41,6 +41,8 @@ class PermissionSeeder extends Seeder
             'user.approve',
             'vendor.approve',
             'vendor.delete',
+            // Checklist Management
+            'manage-checklist-templates',
         ];
 
         foreach ($permissions as $permission) {

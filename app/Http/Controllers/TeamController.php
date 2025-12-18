@@ -151,6 +151,8 @@ class TeamController extends Controller
 
         Vendor::create([
             'user_id' => $vendorUser->id,
+            'brand_name' => $request->business_name, // Copy from business_name
+            'email' => $request->email, // Copy from email
             'service_type_id' => $request->service_type_id,
             'category' => $serviceType->name, // Use service type name as category
             'contact_person' => $request->contact_person,

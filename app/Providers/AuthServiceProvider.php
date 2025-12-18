@@ -56,5 +56,15 @@ class AuthServiceProvider extends ServiceProvider
             // Check if user has the specific access-settings permission
             return $user->can('access-settings');
         });
+        
+        // Define gate for managing checklist templates
+        Gate::define('manage-checklist-templates', function ($user) {
+            // SuperUser always has access
+            if ($user->hasRole('SuperUser')) {
+                return true;
+            }
+            // Check for specific permission (can be assigned to Owner/Admin via permission matrix)
+            return $user->can('manage-checklist-templates');
+        });
     }
 }

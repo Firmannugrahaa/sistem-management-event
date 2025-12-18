@@ -99,4 +99,9 @@ class Vendor extends Model
     {
         return $this->hasMany(VendorPackage::class);
     }
+
+    public function getNameAttribute(): string
+    {
+        return $this->brand_name ?? $this->user->name ?? 'Unnamed Vendor';
+    }
 }

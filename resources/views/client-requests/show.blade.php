@@ -5,8 +5,21 @@
         </h2>
     </x-slot>
 
-<div class="py-6">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Flash Messages -->
+            @if (session('success'))
+                <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+                    <span class="block sm:inline">{{ session('success') }}</span>
+                </div>
+            @endif
+            @if (session('error'))
+                <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <span class="block sm:inline">{{ session('error') }}</span>
+                </div>
+            @endif
+
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header dengan Action Buttons -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
             <div class="flex justify-between items-start">
@@ -358,17 +371,71 @@
                             </div>
                         </div>
                     @else
+                        <!-- Readiness Checklist -->
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Checklist Kesiapan</h4>
+                            @php 
+                                $checklist = $clientRequest->getReadinessChecklist(); 
+                                $isReady = $clientRequest->isReadyToConvert();
+                            @endphp
+                            <div class="space-y-2">
+                                @foreach($checklist as $key => $item)
+                                <div class="flex items-start">
+                                    @if($item['completed'])
+                                        <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    @else
+                                        <svg class="w-5 h-5 text-gray-300 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    @endif
+                                    <div>
+                                        <p class="text-xs font-medium {{ $item['completed'] ? 'text-gray-900' : 'text-gray-500' }}">
+                                            {{ $item['label'] }}
+                                        </p>
+                                        <p class="text-[10px] text-gray-500">{{ $item['description'] }}</p>
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+
                         <!-- Not converted yet -->
-                        <p class="text-sm text-gray-600 mb-4">
-                            Convert request ini menjadi event untuk proses lebih lanjut.
-                        </p>
-                        <a href="{{ route('client-requests.convert-to-event', $clientRequest) }}" 
-                           class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition shadow-md hover:shadow-lg transform hover:scale-105 duration-200">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                            </svg>
-                            Convert ke Event
-                        </a>
+                        @if($isReady)
+                            <div class="bg-green-50 border border-green-100 rounded-lg p-3 mb-4">
+                                <p class="text-xs text-green-700">
+                                    <span class="font-bold">Ready!</span> Semua kriteria terpenuhi.
+                                </p>
+                            </div>
+
+                             <form action="{{ route('client-requests.convert-to-event', $clientRequest) }}" method="POST">
+                                @csrf
+                                <button type="submit" onclick="return confirm('Yakin ingin convert menjadi Event? Booking akan ditandai sebagai confirmed.')"
+                                   class="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg font-semibold hover:from-green-700 hover:to-teal-700 transition shadow-md hover:shadow-lg transform hover:scale-105 duration-200">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Confirm & Create Event
+                                </button>
+                            </form>
+                        @elseif($clientRequest->detailed_status === 'ready_to_confirm')
+                            <div class="bg-yellow-50 border border-yellow-100 rounded-lg p-3 mb-4">
+                                <p class="text-xs text-yellow-700">
+                                    <span class="font-bold">Perhatian:</span> Lengkapi data utama (Paket/Vendor, Tanggal, dll) sebelum mengonversi menjadi event.
+                                </p>
+                            </div>
+                            <button disabled class="w-full px-4 py-3 bg-gray-100 text-gray-400 rounded-lg font-semibold cursor-not-allowed flex items-center justify-center group relative">
+                                <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                Data Belum Lengkap
+                            </button>
+                        @else
+                            <p class="text-sm text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                Lengkapi data dan ubah status menjadi "Siap Konfirmasi" untuk enable tombol convert.
+                            </p>
+                        @endif
                     @endif
                 </div>
                 @endif

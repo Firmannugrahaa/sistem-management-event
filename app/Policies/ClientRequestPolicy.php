@@ -76,8 +76,8 @@ class ClientRequestPolicy
      */
     public function delete(User $user, ClientRequest $clientRequest): bool
     {
-        // Only SuperUser can delete
-        return $user->hasRole('SuperUser');
+        // SuperUser, Owner, Admin can delete
+        return $user->hasAnyRole(['SuperUser', 'Owner', 'Admin']);
     }
 
     /**

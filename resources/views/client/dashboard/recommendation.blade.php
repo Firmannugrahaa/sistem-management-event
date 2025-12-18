@@ -32,118 +32,117 @@
                 </div>
                 @endif
 
-                <!-- Items List -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                        <h2 class="text-lg font-semibold text-gray-900">Package Details</h2>
-                        <span class="text-sm text-gray-500">{{ $recommendation->items->count() }} items</span>
-                    </div>
-                    <ul class="divide-y divide-gray-200">
-                        @foreach($recommendation->items as $item)
-                        <li class="p-6 hover:bg-gray-50 transition">
-                            <div class="flex items-start justify-between">
-                                <div class="flex-1">
-                                    <div class="flex items-center mb-1">
-                                        <span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 mr-2">
-                                            {{ $item->category }}
+                <!-- Items List (Grouped by Category) -->
+                @php
+                    $groupedItems = $recommendation->items->groupBy('category');
+                @endphp
+
+                <div class="space-y-8">
+                    @foreach($groupedItems as $category => $items)
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                            <span class="w-1 h-6 bg-blue-600 rounded-full mr-3"></span>
+                            {{ $category }}
+                        </h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            @foreach($items as $item)
+                            <div class="bg-white rounded-xl shadow-sm border {{ $item->status === 'accepted' ? 'border-green-500 ring-1 ring-green-500' : ($item->status === 'rejected' ? 'border-red-200 bg-red-50' : 'border-gray-200') }} p-5 relative transition hover:shadow-md flex flex-col h-full">
+                                
+                                <!-- Badges -->
+                                <div class="absolute top-4 right-4 flex space-x-2">
+                                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider {{ $item->recommendation_type_badge_color }}">
+                                        {{ $item->recommendation_type }}
+                                    </span>
+                                    @if($item->status !== 'pending')
+                                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider {{ $item->status_badge_color }}">
+                                            {{ $item->status }}
                                         </span>
-                                        <h3 class="text-base font-semibold text-gray-900">
-                                            {{ $item->vendor_name }}
-                                        </h3>
-                                    </div>
-                                    @if($item->notes)
-                                    <p class="text-sm text-gray-600 mt-1">{{ $item->notes }}</p>
                                     @endif
                                 </div>
-                                <div class="text-right ml-4">
-                                    <p class="text-sm font-medium text-gray-900">
+
+                                <div class="mb-4 pr-16">
+                                    <h3 class="font-bold text-lg text-gray-900">{{ $item->vendor_name }}</h3>
+                                    @if($item->service_name)
+                                        <p class="text-sm text-blue-600 font-medium">{{ $item->service_name }}</p>
+                                    @endif
+                                    <p class="text-lg font-bold text-gray-900 mt-2">
                                         Rp {{ number_format($item->estimated_price, 0, ',', '.') }}
                                     </p>
                                 </div>
+
+                                @if($item->notes)
+                                <div class="bg-blue-50 p-3 rounded-lg mb-4 text-xs text-blue-800">
+                                    <span class="font-bold">Admin Note:</span> {{ $item->notes }}
+                                </div>
+                                @endif
+
+                                <div class="mt-auto pt-4 border-t border-gray-100">
+                                    @if($item->status === 'pending')
+                                        <div class="flex space-x-2">
+                                            <button onclick="acceptItem({{ $item->id }})" class="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition">
+                                                Setujui
+                                            </button>
+                                            <button onclick="rejectItem({{ $item->id }})" class="flex-1 bg-white border border-red-200 text-red-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition">
+                                                Tolak
+                                            </button>
+                                        </div>
+                                    @elseif($item->status === 'accepted')
+                                        <div class="text-center py-2 bg-green-50 rounded-lg text-green-700 text-sm font-medium">
+                                            ✓ Disetujui
+                                        </div>
+                                    @elseif($item->status === 'rejected')
+                                        <div class="text-center py-2 bg-red-50 rounded-lg text-red-700 text-sm font-medium">
+                                            ✕ Ditolak
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
-                        </li>
-                        @endforeach
-                    </ul>
-                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-                        <span class="font-medium text-gray-900">Total Estimated Budget</span>
-                        <span class="text-xl font-bold text-blue-600">
-                            Rp {{ number_format($recommendation->total_estimated_budget, 0, ',', '.') }}
-                        </span>
+                            @endforeach
+                        </div>
                     </div>
+                    @endforeach
+                </div>
+
+                <div class="mt-8 bg-gray-50 rounded-xl p-6 border border-gray-200 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Total Estimated Budget</h3>
+                        <p class="text-sm text-gray-500">Based on all recommendations</p>
+                    </div>
+                    <span class="text-2xl font-bold text-blue-600">
+                        Rp {{ number_format($recommendation->total_estimated_budget, 0, ',', '.') }}
+                    </span>
                 </div>
             </div>
 
-            <!-- Action Sidebar -->
+            <!-- Action Sidebar (Summary) -->
             <div class="space-y-6">
-                <!-- Action Card -->
+                <!-- Status Card -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Your Response</h3>
-                    
-                    @if($recommendation->status === 'sent')
-                        <p class="text-sm text-gray-600 mb-6">Please review the proposal and let us know your decision. You can accept it to proceed, reject it, or ask for revisions.</p>
-                        
-                        <form action="{{ route('client.recommendations.respond', $recommendation) }}" method="POST" id="response-form">
-                            @csrf
-                            <input type="hidden" name="action" id="response-action">
-                            
-                            <div class="space-y-3">
-                                <button type="button" onclick="submitResponse('accept')" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                    Accept Proposal
-                                </button>
-                                
-                                <button type="button" onclick="showFeedback('revision')" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    Request Revision
-                                </button>
-                                
-                                <button type="button" onclick="showFeedback('reject')" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                    Reject
-                                </button>
-                            </div>
-
-                            <!-- Feedback Modal / Area (Hidden by default) -->
-                            <div id="feedback-area" class="hidden mt-4 pt-4 border-t border-gray-200">
-                                <label class="block text-sm font-medium text-gray-700 mb-2" id="feedback-label">Reason / Feedback</label>
-                                <textarea name="feedback" rows="3" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md" placeholder="Please provide details..."></textarea>
-                                <div class="mt-3 flex justify-end space-x-3">
-                                    <button type="button" onclick="hideFeedback()" class="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
-                                    <button type="button" onclick="submitWithFeedback()" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                        Submit Response
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    @else
-                        <div class="text-center py-4">
-                            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full {{ $recommendation->status === 'accepted' ? 'bg-green-100' : ($recommendation->status === 'rejected' ? 'bg-red-100' : 'bg-orange-100') }}">
-                                @if($recommendation->status === 'accepted')
-                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                @elseif($recommendation->status === 'rejected')
-                                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                                @else
-                                <svg class="h-6 w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                </svg>
-                                @endif
-                            </div>
-                            <h3 class="mt-2 text-lg font-medium text-gray-900">
-                                You {{ str_replace('_', ' ', $recommendation->status) }} this proposal
-                            </h3>
-                            <p class="mt-1 text-sm text-gray-500">
-                                Response recorded on {{ $recommendation->responded_at->format('d M Y, H:i') }}
-                            </p>
-                            @if($recommendation->client_feedback)
-                            <div class="mt-4 bg-gray-50 p-3 rounded-lg text-left">
-                                <p class="text-xs font-medium text-gray-500 mb-1">Your Feedback:</p>
-                                <p class="text-sm text-gray-700">{{ $recommendation->client_feedback }}</p>
-                            </div>
-                            @endif
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Status Rekomendasi</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">Total Items</span>
+                            <span class="font-medium">{{ $recommendation->items->count() }}</span>
                         </div>
-                    @endif
-                </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">Pending</span>
+                            <span class="font-medium text-orange-600">{{ $recommendation->items->where('status', 'pending')->count() }}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">Accepted</span>
+                            <span class="font-medium text-green-600">{{ $recommendation->items->where('status', 'accepted')->count() }}</span>
+                        </div>
+                         <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">Rejected</span>
+                            <span class="font-medium text-red-600">{{ $recommendation->items->where('status', 'rejected')->count() }}</span>
+                        </div>
+                    </div>
+                     <div class="mt-6 pt-6 border-t border-gray-100">
+                        <p class="text-xs text-gray-500 text-center">
+                             Silakan setujui atau tolak item per kategori. Item yang disetujui akan otomatis masuk ke draft event Anda.
+                        </p>
+                    </div>
             </div>
         </div>
     </div>
@@ -151,39 +150,64 @@
 
 @push('scripts')
 <script>
-    let currentAction = '';
+    function acceptItem(itemId) {
+        if(!confirm('Apakah Anda yakin ingin menyetujui rekomendasi vendor ini?')) return;
 
-    function submitResponse(action) {
-        if(confirm('Are you sure you want to ' + action + ' this proposal?')) {
-            document.getElementById('response-action').value = action;
-            document.getElementById('response-form').submit();
-        }
+        fetch(`/portal/recommendations/items/${itemId}/accept`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            if(data.success) {
+                // Show success feedback
+                alert('Berhasil menyetujui rekomendasi!');
+                window.location.reload();
+            } else {
+                alert('Terjadi kesalahan saat memproses permintaan via server.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Gagal menghubungi server. Silakan coba lagi.');
+        });
     }
 
-    function showFeedback(action) {
-        currentAction = action;
-        const area = document.getElementById('feedback-area');
-        const label = document.getElementById('feedback-label');
-        
-        area.classList.remove('hidden');
-        
-        if (action === 'revision') {
-            label.textContent = 'What changes would you like to request?';
-        } else {
-            label.textContent = 'Please tell us why you are rejecting this proposal (Optional)';
-        }
-    }
+    function rejectItem(itemId) {
+        const reason = prompt('Mohon berikan alasan penolakan (opsional):');
+        if(reason === null) return; // User cancelled
 
-    function hideFeedback() {
-        document.getElementById('feedback-area').classList.add('hidden');
-        currentAction = '';
-    }
-
-    function submitWithFeedback() {
-        if (!currentAction) return;
-        
-        document.getElementById('response-action').value = currentAction;
-        document.getElementById('response-form').submit();
+        fetch(`/portal/recommendations/items/${itemId}/reject`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ reason: reason })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+             if(data.success) {
+                window.location.reload();
+            } else {
+                 alert('Terjadi kesalahan saat memproses permintaan via server.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Gagal menghubungi server. Silakan coba lagi.');
+        });
     }
 </script>
 @endpush

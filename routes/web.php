@@ -15,7 +15,10 @@ use App\Http\Controllers\TeamVendorController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\TemanHalalController;
 use Illuminate\Support\Facades\Route;
-
+// Test route for debugging
+Route::get('/test', function() {
+    return 'Server is working!';
+});
 
 Route::get('/', [App\Http\Controllers\LandingPageController::class, 'index'])->name('landing.page');
 
@@ -28,6 +31,9 @@ Route::get('/book-now', [\App\Http\Controllers\Public\PublicBookingController::c
     ->name('public.booking.form');
 Route::post('/book-now', [\App\Http\Controllers\Public\PublicBookingController::class, 'storeBooking'])
     ->name('public.booking.store');
+Route::get('/booking-confirmation/{clientRequest}', [\App\Http\Controllers\Public\PublicBookingController::class, 'showConfirmation'])
+    ->name('public.booking.confirmation')
+    ->middleware(['auth']);
 
 // Public Catalog Item Detail
 Route::get('/catalog/item/{id}', [\App\Http\Controllers\Public\PublicCatalogController::class, 'show'])
@@ -56,6 +62,41 @@ Route::post('/client/order/store-selections', [App\Http\Controllers\Client\Clien
 // Client order confirmation route
 Route::post('/client/order/confirm', [App\Http\Controllers\Client\ClientOrderController::class, 'confirm'])
     ->middleware(['auth', 'verified', 'role:Client'])->name('client.order.confirm');
+
+// Client Checklist Routes
+Route::middleware(['auth', 'verified', 'role:Client'])->group(function () {
+    Route::get('/client/checklist/{clientRequest}', [App\Http\Controllers\Client\ChecklistController::class, 'index'])
+        ->name('client.checklist');
+    Route::get('/client/checklist/{clientRequest}/timeline', [App\Http\Controllers\Client\ChecklistController::class, 'timeline'])
+        ->name('client.checklist.timeline');
+    Route::post('/client/checklist/{checklist}/item', [App\Http\Controllers\Client\ChecklistController::class, 'storeItem'])
+        ->name('client.checklist.item.store');
+    Route::patch('/client/checklist/item/{item}', [App\Http\Controllers\Client\ChecklistController::class, 'updateItem'])
+        ->name('client.checklist.item.update');
+    Route::delete('/client/checklist/item/{item}', [App\Http\Controllers\Client\ChecklistController::class, 'destroyItem'])
+        ->name('client.checklist.item.destroy');
+});
+
+// Client Booking Wizard
+Route::middleware(['auth', 'verified', 'role:Client'])->prefix('client/booking')->name('client.booking.')->group(function () {
+    Route::get('/start', [App\Http\Controllers\Client\BookingWizardController::class, 'start'])->name('start');
+    Route::post('/mode', [App\Http\Controllers\Client\BookingWizardController::class, 'storeMode'])->name('mode.store');
+    
+    // Package Flow (Step 2a)
+    Route::get('/packages', [App\Http\Controllers\Client\BookingWizardController::class, 'showPackages'])->name('packages');
+    Route::post('/packages', [App\Http\Controllers\Client\BookingWizardController::class, 'selectPackage'])->name('package.select');
+    
+    // Custom Flow (Step 2b)
+    Route::get('/vendors', [App\Http\Controllers\Client\BookingWizardController::class, 'showVendors'])->name('vendors');
+    Route::post('/vendors', [App\Http\Controllers\Client\BookingWizardController::class, 'selectVendors'])->name('vendors.select');
+    
+    // Common Steps
+    Route::get('/details', [App\Http\Controllers\Client\BookingWizardController::class, 'showEventDetails'])->name('details');
+    Route::post('/details', [App\Http\Controllers\Client\BookingWizardController::class, 'storeEventDetails'])->name('details.store');
+    
+    Route::get('/review', [App\Http\Controllers\Client\BookingWizardController::class, 'showReview'])->name('review');
+    Route::post('/submit', [App\Http\Controllers\Client\BookingWizardController::class, 'submit'])->name('submit');
+});
 
 
 
@@ -94,13 +135,37 @@ Route::middleware('auth')->group(function () {
     // Combined Team and Vendor Management
     Route::get('/manage-team-vendor', [TeamVendorController::class, 'index'])->name('team-vendor.index');
 
+    // Staff Dashboard & Events (Role: Staff)
+    Route::prefix('staff')->middleware('role:Staff')->name('staff.')->group(function () {
+        Route::get('/dashboard', [App\Http\Controllers\Staff\StaffDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/events', [App\Http\Controllers\Staff\StaffDashboardController::class, 'events'])->name('events.index');
+        Route::get('/events/{event}', [App\Http\Controllers\Staff\StaffDashboardController::class, 'showEvent'])->name('events.show');
+        
+        // Staff Tasks
+        Route::get('/events/{event}/tasks', [App\Http\Controllers\Staff\StaffTaskController::class, 'index'])->name('events.tasks');
+        Route::post('/events/{event}/tasks/{task}/status', [App\Http\Controllers\Staff\StaffTaskController::class, 'updateStatus'])->name('tasks.update-status');
+        Route::post('/events/{event}/tasks/{task}/proof', [App\Http\Controllers\Staff\StaffTaskController::class, 'uploadProof'])->name('tasks.upload-proof');
+    });
+
+
+    // Event Management
+    Route::resource('events', App\Http\Controllers\EventController::class);
+    Route::post('events/{event}/crew', [App\Http\Controllers\EventCrewController::class, 'store'])->name('events.crew.store');
+    Route::delete('events/{event}/crew/{crew}', [App\Http\Controllers\EventCrewController::class, 'destroy'])->name('events.crew.destroy');
+    
+    // Event Tasks (Admin)
+    Route::get('events/{event}/tasks', [App\Http\Controllers\EventTaskController::class, 'index'])->name('events.tasks.index');
+    Route::post('events/{event}/tasks', [App\Http\Controllers\EventTaskController::class, 'store'])->name('events.tasks.store');
+    Route::put('events/{event}/tasks/{task}', [App\Http\Controllers\EventTaskController::class, 'update'])->name('events.tasks.update');
+    Route::delete('events/{event}/tasks/{task}', [App\Http\Controllers\EventTaskController::class, 'destroy'])->name('events.tasks.destroy');
+
     // Client Requests / Leads Management
     Route::resource('client-requests', App\Http\Controllers\ClientRequestController::class);
     Route::post('client-requests/{clientRequest}/update-status', [App\Http\Controllers\ClientRequestController::class, 'updateStatus'])
         ->name('client-requests.update-status');
     Route::post('client-requests/{clientRequest}/assign-staff', [App\Http\Controllers\ClientRequestController::class, 'assignStaff'])
         ->name('client-requests.assign-staff');
-    Route::get('client-requests/{clientRequest}/convert-to-event', [App\Http\Controllers\ClientRequestController::class, 'convertToEvent'])
+    Route::post('client-requests/{clientRequest}/convert-to-event', [App\Http\Controllers\ClientRequestController::class, 'convertToEvent'])
         ->name('client-requests.convert-to-event');
 
     // Recommendation System
@@ -112,6 +177,8 @@ Route::middleware('auth')->group(function () {
         ->name('recommendations.show');
     Route::post('recommendations/{recommendation}/send', [App\Http\Controllers\RecommendationController::class, 'send'])
         ->name('recommendations.send');
+    Route::delete('recommendations/{recommendation}', [App\Http\Controllers\RecommendationController::class, 'destroy'])
+        ->name('recommendations.destroy');
 
     // Company Products & Packages (Owner/Admin Only)
     Route::middleware(['role:Owner|Admin|SuperUser'])->prefix('company')->name('company.')->group(function () {
@@ -145,12 +212,32 @@ Route::middleware('auth')->group(function () {
         Route::post('/restore-bulk', [App\Http\Controllers\TrashController::class, 'restoreBulk'])->name('restore-bulk');
     });
 
+    // Checklist Template Management (SuperUser + Permission-based for Admin/Owner)
+    Route::middleware('can:manage-checklist-templates')->prefix('admin/checklist-templates')->name('admin.checklist-templates.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\ChecklistTemplateController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Admin\ChecklistTemplateController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\ChecklistTemplateController::class, 'store'])->name('store');
+        Route::get('/{template}', [App\Http\Controllers\Admin\ChecklistTemplateController::class, 'show'])->name('show');
+        Route::get('/{template}/edit', [App\Http\Controllers\Admin\ChecklistTemplateController::class, 'edit'])->name('edit');
+        Route::put('/{template}', [App\Http\Controllers\Admin\ChecklistTemplateController::class, 'update'])->name('update');
+        Route::delete('/{template}', [App\Http\Controllers\Admin\ChecklistTemplateController::class, 'destroy'])->name('destroy');
+        
+        // Template Item Management
+        Route::post('/{template}/items', [App\Http\Controllers\Admin\ChecklistTemplateController::class, 'storeItem'])->name('items.store');
+        Route::put('/items/{item}', [App\Http\Controllers\Admin\ChecklistTemplateController::class, 'updateItem'])->name('items.update');
+        Route::delete('/items/{item}', [App\Http\Controllers\Admin\ChecklistTemplateController::class, 'destroyItem'])->name('items.destroy');
+        Route::post('/{template}/items/reorder', [App\Http\Controllers\Admin\ChecklistTemplateController::class, 'reorderItems'])->name('items.reorder');
+    });
+
     // Client Portal (For Clients/Users)
     Route::middleware('role:Client|User')->prefix('portal')->name('client.')->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\Client\ClientDashboardController::class, 'index'])->name('dashboard');
         Route::get('/requests/{clientRequest}', [App\Http\Controllers\Client\ClientDashboardController::class, 'show'])->name('requests.show');
+        Route::put('/requests/{clientRequest}', [App\Http\Controllers\Client\ClientDashboardController::class, 'update'])->name('requests.update');
         Route::get('/recommendations/{recommendation}', [App\Http\Controllers\Client\ClientDashboardController::class, 'showRecommendation'])->name('recommendations.show');
         Route::post('/recommendations/{recommendation}/respond', [App\Http\Controllers\Client\ClientDashboardController::class, 'respondRecommendation'])->name('recommendations.respond');
+        Route::post('/recommendations/items/{item}/accept', [App\Http\Controllers\Client\ClientDashboardController::class, 'acceptItem'])->name('recommendations.items.accept');
+        Route::post('/recommendations/items/{item}/reject', [App\Http\Controllers\Client\ClientDashboardController::class, 'rejectItem'])->name('recommendations.items.reject');
     });
 
     // User-facing Invoice History
@@ -163,6 +250,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('events.guests', GuestController::class)->except(['index']);
     Route::post('events/{event}/guests/import', [GuestController::class, 'import'])->name('events.guests.import');
     Route::post('events/{event}/assign-vendor', [EventController::class, 'assignVendor'])->name('events.assignVendor');
+    Route::patch('events/{event}/vendors/{vendor}/status', [EventController::class, 'updateVendorStatus'])->name('events.updateVendorStatus');
     Route::post('/events/{event}/vendors/{vendor}/detach', [EventController::class, 'detachVendor'])->name('events.detach-vendor');
     
     // Event Vendor Items Management
@@ -170,6 +258,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/events/{event}/vendors/{vendor}/items', [App\Http\Controllers\EventVendorItemController::class, 'store'])->name('events.vendor-items.store');
     Route::delete('/event-vendor-items/{item}', [App\Http\Controllers\EventVendorItemController::class, 'destroy'])->name('events.vendor-items.destroy');
 
+    Route::get('vendors/{vendor}/offerings', [VendorController::class, 'getOfferings'])->name('vendors.offerings');
     Route::resource('vendors', VendorController::class);
 
     // General Services Management - accessible to Owner and Admin roles
@@ -219,7 +308,11 @@ Route::middleware('auth')->group(function () {
         })->name('profile');
 
         Route::get('/events', function () {
-            $vendor = auth()->user()->vendor;
+            $user = auth()->user();
+            // Mark vendor assignment notifications as read
+            $user->unreadNotifications()->where('type', 'vendor_assignment')->update(['is_read' => true]);
+
+            $vendor = $user->vendor;
             if (!$vendor) {
                 abort(403, 'Anda bukan vendor');
             }

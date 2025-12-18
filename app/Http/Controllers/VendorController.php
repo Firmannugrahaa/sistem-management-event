@@ -103,28 +103,28 @@ class VendorController extends Controller
 
         $validated = $request->validate([
             // User fields
-            'business_name' => 'required|string|max:255',
             'username' => ['required', 'string', 'max:255', 'alpha_dash', Rule::unique('users')->ignore($user->id)],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
 
             // Vendor fields
+            'brand_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255',
             'service_type_id' => 'required|exists:service_types,id',
             'contact_person' => 'required|string|max:255',
             'phone_number' => 'required|string|max:20',
             'address' => 'nullable|string',
         ]);
 
-        // Update User
+        // Update User (username only)
         $user->update([
-            'name' => $request->business_name,
             'username' => $request->username,
-            'email' => $request->email,
         ]);
 
-        // Update Vendor
+        // Update Vendor (including brand_name and email)
         $serviceType = ServiceType::find($request->service_type_id);
         
         $vendor->update([
+            'brand_name' => $request->brand_name,
+            'email' => $request->email,
             'service_type_id' => $request->service_type_id,
             'category' => $serviceType->name,
             'contact_person' => $request->contact_person,
@@ -143,5 +143,45 @@ class VendorController extends Controller
         $this->authorize('delete', $vendor);
         $vendor->delete();
         return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', 'Vendor berhasil dihapus.');
+    }
+    /**
+     * Get vendor offerings (Packages + Catalog Items) for auto-fill
+     */
+    public function getOfferings(Vendor $vendor)
+    {
+        // Simple authorization
+        if (!auth()->check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $packages = $vendor->packages()
+            ->select('id', 'name', 'price', 'description')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => 'pkg_' . $item->id,
+                    'name' => '[Package] ' . $item->name,
+                    'price' => $item->price,
+                    'description' => $item->description,
+                    'type' => 'package'
+                ];
+            });
+
+        $catalogItems = $vendor->catalogItems()
+            ->select('id', 'name', 'price', 'description')
+            ->get()
+            ->map(function ($item) {
+                 return [
+                    'id' => 'item_' . $item->id,
+                    'name' => '[Item] ' . $item->name,
+                    'price' => $item->price,
+                    'description' => $item->description,
+                    'type' => 'item'
+                ];
+            });
+
+        $offerings = $packages->concat($catalogItems);
+
+        return response()->json($offerings);
     }
 }

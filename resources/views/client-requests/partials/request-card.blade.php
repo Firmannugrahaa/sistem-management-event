@@ -83,7 +83,7 @@
             @endcan
 
             @can('delete', $request)
-            <form action="{{ route('client-requests.destroy', $request) }}" method="POST" class="inline" onsubmit="return confirm('Yakin ingin menghapus request ini?')">
+            <form action="{{ route('client-requests.destroy', $request) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data booking ini? Tindakan ini tidak dapat dibatalkan.')">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="p-1 text-gray-400 hover:text-red-600 transition" title="Delete">

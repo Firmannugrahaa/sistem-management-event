@@ -15,14 +15,33 @@ class ClientDashboardController extends Controller
     /**
      * Client Dashboard - List of Requests
      */
-    public function index()
+    public function index(Request $request)
     {
-        $requests = ClientRequest::where('user_id', Auth::id())
+        $query = ClientRequest::where('user_id', Auth::id())
             ->with(['recommendations' => function($q) {
                 $q->latest();
-            }])
-            ->orderBy('created_at', 'desc')
-            ->get();
+            }]);
+
+        // Filter by Status (Detailed Status maps better to user view)
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('detailed_status', $request->status);
+        }
+
+        // Filter by Date
+        if ($request->filled('date')) {
+             $query->whereDate('event_date', $request->date);
+        }
+
+        // Search by ID or Event Type
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                  ->orWhere('event_type', 'like', "%{$search}%");
+            });
+        }
+
+        $requests = $query->orderBy('created_at', 'desc')->paginate(10);
 
         return view('client.dashboard.index', compact('requests'));
     }
@@ -37,9 +56,40 @@ class ClientDashboardController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $clientRequest->load(['recommendations.items', 'event']);
+        $clientRequest->load([
+            'recommendations.items', 
+            'event',
+            'eventPackage.items.vendorCatalogItem.vendor.serviceType',
+            'eventPackage.items.vendorPackage.vendor.serviceType',
+            'vendor.serviceType'
+        ]);
 
         return view('client.dashboard.show', compact('clientRequest'));
+    }
+
+    /**
+     * Update Request (Safe Edit for Client)
+     */
+    public function update(Request $request, ClientRequest $clientRequest)
+    {
+        // Security check
+        if ($clientRequest->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'groom_name' => 'nullable|string|max:255',
+            'bride_name' => 'nullable|string|max:255',
+            'message' => 'nullable|string',
+        ]);
+
+        $clientRequest->update([
+            'groom_name' => $validated['groom_name'] ?? $clientRequest->groom_name,
+            'bride_name' => $validated['bride_name'] ?? $clientRequest->bride_name,
+            'message' => $validated['message'] ?? $clientRequest->message,
+        ]);
+
+        return back()->with('success', 'Data booking berhasil diperbarui.');
     }
 
     /**
@@ -121,5 +171,55 @@ class ClientDashboardController extends Controller
             DB::rollBack();
             return back()->with('error', 'Failed to submit response.');
         }
+    }
+
+    /**
+     * Accept a specific recommendation item
+     */
+    public function acceptItem(Request $request, \App\Models\RecommendationItem $item)
+    {
+        // Security check
+        if ($item->recommendation->clientRequest->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $item->update(['status' => 'accepted', 'rejection_reason' => null]);
+
+        // Auto-assign logic
+        $clientRequest = $item->recommendation->clientRequest;
+        
+        // If it's a main vendor role, update client request
+        if ($item->vendor_id) {
+            // Check if this category matches main vendor roles
+            if (in_array(strtolower($item->category), ['venue', 'organized', 'wedding organizer', 'wo'])) {
+                $clientRequest->vendor_id = $item->vendor_id;
+                $clientRequest->save();
+            }
+        }
+        
+        // Check for readiness transition
+        if ($clientRequest->hasCompleteData() && $clientRequest->detailed_status === 'recommendation_sent') {
+             $clientRequest->detailed_status = 'ready_to_confirm';
+             $clientRequest->save();
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Reject a specific recommendation item
+     */
+    public function rejectItem(Request $request, \App\Models\RecommendationItem $item)
+    {
+         if ($item->recommendation->clientRequest->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $item->update([
+            'status' => 'rejected', 
+            'rejection_reason' => $request->input('reason')
+        ]);
+
+        return response()->json(['success' => true]);
     }
 }

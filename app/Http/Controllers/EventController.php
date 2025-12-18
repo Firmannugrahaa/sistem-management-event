@@ -169,6 +169,12 @@ class EventController extends Controller
                     'contract_details' => "Venue: " . ($validated['vendor_venue_name'] ?? 'Vendor Venue'),
                     'status' => 'Confirmed',
                 ]);
+                
+                // Auto-check checklist items for venue vendor
+                $vendor = \App\Models\Vendor::find($validated['vendor_venue_id']);
+                if ($vendor) {
+                    \App\Services\ChecklistVendorMappingService::autoCheckItems($event->id, $vendor);
+                }
             }
 
             \Illuminate\Support\Facades\DB::commit();
@@ -189,10 +195,13 @@ class EventController extends Controller
     {
         $this->authorize('view', $event);
 
-        $event->load('guests.ticket', 'vendors');
+        $event->load('guests.ticket', 'vendors', 'crews.user', 'vendorItems.itemable');
 
-        $all_vendors = Vendor::orderBy('name')->get();
-        return view('events.show', compact('event', 'all_vendors'));
+        $all_vendors = Vendor::orderBy('brand_name')->get();
+        // Assuming all users can be crew for now, or filter by role if needed
+        $all_users = \App\Models\User::orderBy('name')->get();
+        
+        return view('events.show', compact('event', 'all_vendors', 'all_users'));
     }
 
     /**
@@ -315,6 +324,10 @@ class EventController extends Controller
             'contract_details' => $request->contract_details,
             'status' => 'Negotiation',
         ]);
+        
+        // Auto-check checklist items if status is confirmed
+        // Note: For 'Negotiation' status, items will be checked when status changes to 'Confirmed'
+        // You can add status update endpoint to handle this
 
         return back()->with('success', 'Vendor berhasil ditugaskan ke event.');
     }
@@ -357,5 +370,35 @@ class EventController extends Controller
         }
 
         return back()->with('success', 'Invoice berhasil di-generate/diperbarui.');
+    }
+
+    /**
+     * Update vendor status for an event
+     */
+    public function updateVendorStatus(Request $request, Event $event, Vendor $vendor)
+    {
+        $request->validate([
+            'status' => 'required|in:Negotiation,Confirmed,Cancelled',
+        ]);
+
+        // Get current status
+        $currentPivot = $event->vendors()->where('vendor_id', $vendor->id)->first();
+        $oldStatus = $currentPivot ? $currentPivot->pivot->status : null;
+
+        // Update vendor status in pivot table
+        $event->vendors()->updateExistingPivot($vendor->id, [
+            'status' => $request->status,
+        ]);
+
+        // Handle checklist auto-check based on status change
+        if ($request->status === 'Confirmed' && $oldStatus !== 'Confirmed') {
+            // Auto-check checklist items when vendor is confirmed
+            \App\Services\ChecklistVendorMappingService::autoCheckItems($event->id, $vendor);
+        } elseif ($request->status === 'Cancelled' && $oldStatus === 'Confirmed') {
+            // Uncheck checklist items when vendor is cancelled (was previously confirmed)
+            \App\Services\ChecklistVendorMappingService::uncheckItems($event->id, $vendor);
+        }
+
+        return back()->with('success', "Status vendor berhasil diubah menjadi {$request->status}.");
     }
 }

@@ -29,6 +29,16 @@
             </div>
         </div>
 
+        <!-- Create New Booking Button -->
+        <div class="mb-8">
+            <a href="{{ route('client.booking.start') }}" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow-lg hover:shadow-xl">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Booking Baru
+            </a>
+        </div>
+
         <!-- Event Status Tabs -->
         <div class="mb-8">
             <div class="border-b border-gray-200">

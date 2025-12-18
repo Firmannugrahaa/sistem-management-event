@@ -28,6 +28,11 @@
                 Lihat Invoice
               </x-primary-button>
               @endif
+              
+              {{-- Tombol 3: Manage Tasks --}}
+              <x-secondary-button tag="a" :href="route('events.tasks.index', $event)" class="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
+                📋 Manage Tasks
+              </x-secondary-button>
             </div>
           </div>
           <div class="p-6 text-gray-900 dark:text-gray-100">
@@ -53,6 +58,89 @@
             <p><strong>Deskripsi:</strong> {{ $event->description ?? '-' }}</p>
           </div>
         </div>
+
+        {{-- DAFTAR CREW / PANITIA --}}
+        <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+          <div class="p-6 text-gray-900 dark:text-gray-100">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-bold">Tim / Crew Event</h3>
+              <x-primary-button
+                x-data=""
+                x-on:click.prevent="$dispatch('open-modal', 'add-crew-modal')"
+              >
+                + Tambah Crew
+              </x-primary-button>
+            </div>
+
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead>
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role / Jabatan</th>
+                  <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                @forelse ($event->crews as $crew)
+                <tr>
+                  <td class="px-6 py-4">{{ $crew->user->name }}</td>
+                  <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800">
+                        {{ $crew->role }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-right">
+                    <form action="{{ route('events.crew.destroy', [$event, $crew]) }}" method="POST" class="inline-block" onsubmit="return confirm('Hapus crew ini?')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm">Remove</button>
+                    </form>
+                  </td>
+                </tr>
+                @empty
+                <tr>
+                  <td colspan="3" class="px-6 py-4 text-center text-gray-500 text-sm">Belum ada crew ditugaskan.</td>
+                </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {{-- Modal Tambah Crew --}}
+        <x-modal name="add-crew-modal" focusable>
+            <form method="post" action="{{ route('events.crew.store', $event) }}" class="p-6">
+                @csrf
+                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                    {{ __('Tambah Crew / Panitia') }}
+                </h2>
+
+                <div class="mt-6">
+                    <x-input-label for="user_id" value="{{ __('Pilih Staff / User') }}" />
+                    <select id="user_id" name="user_id" class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" required>
+                        <option value="">-- Pilih User --</option>
+                        @foreach($all_users as $user)
+                            <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="mt-6">
+                    <x-input-label for="role" value="{{ __('Role / Jabatan (Ex: Project Manager)') }}" />
+                    <x-text-input id="role" name="role" type="text" class="mt-1 block w-full" placeholder="Project Manager" required />
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <x-secondary-button x-on:click="$dispatch('close')">
+                        {{ __('Cancel') }}
+                    </x-secondary-button>
+
+                    <x-primary-button class="ml-3">
+                        {{ __('Simpan') }}
+                    </x-primary-button>
+                </div>
+            </form>
+        </x-modal>
 
         {{-- DAFTAR TAMU --}}
         <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
@@ -163,17 +251,56 @@
                   <th class="px-6 py-3 text-left ...">Nama Vendor</th>
                   <th class="px-6 py-3 text-left ...">Kategori</th>
                   <th class="px-6 py-3 text-left ...">Harga Sepakat</th>
+                  <th class="px-6 py-3 text-left ...">Sumber</th>
                   <th class="px-6 py-3 text-left ...">Status</th>
                   <th class="px-6 py-3 text-right ...">Aksi</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                 @forelse ($event->vendors as $vendor)
-                <tr>
-                  <td class="px-6 py-4">{{ $vendor->name }}</td>
+                @php
+                    // Get items for this vendor
+                    $vendorItems = $event->vendorItems()->where('vendor_id', $vendor->id)->get();
+                @endphp
+                <tr x-data="{ expanded: false }" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center">
+                      @if($vendorItems->count() > 0)
+                        <button @click="expanded = !expanded" class="mr-2 text-gray-500 hover:text-gray-700">
+                          <svg x-show="!expanded" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                          </svg>
+                          <svg x-show="expanded" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                          </svg>
+                        </button>
+                      @endif
+                      <span class="font-medium">{{ $vendor->name }}</span>
+                    </div>
+                  </td>
                   <td class="px-6 py-4">{{ $vendor->category }}</td>
                   {{-- Ambil data pivot --}}
                   <td class="px-6 py-4">Rp {{ number_format($vendor->pivot->agreed_price, 0, ',', '.') }}</td>
+                  <td class="px-6 py-4">
+                    @php
+                        $source = $vendor->pivot->source ?? 'custom';
+                        $badges = [
+                            'package' => 'bg-purple-100 text-purple-800',
+                            'recommendation' => 'bg-green-100 text-green-800',
+                            'custom' => 'bg-gray-100 text-gray-800',
+                            'client_choice' => 'bg-blue-100 text-blue-800'
+                        ];
+                        $labels = [
+                            'package' => 'Paket',
+                            'recommendation' => 'Rekomendasi',
+                            'custom' => 'Manual',
+                            'client_choice' => 'Pilihan Client'
+                        ];
+                    @endphp
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $badges[$source] ?? 'bg-gray-100' }}">
+                        {{ $labels[$source] ?? ucfirst($source) }}
+                    </span>
+                  </td>
                   <td class="px-6 py-4">{{ $vendor->pivot->status }}</td>
                   <td class="px-6 py-4 text-right">
                     {{-- Tombol Kelola Item (New) --}}
@@ -211,6 +338,44 @@
                     </form>
                   </td>
                 </tr>
+                
+                {{-- Expandable Detail Row --}}
+                @if($vendorItems->count() > 0)
+                <tr x-show="expanded" x-collapse class="bg-gray-50 dark:bg-gray-800">
+                  <td colspan="6" class="px-6 py-4">
+                    <div class="ml-12 space-y-3">
+                      <h4 class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3">📋 Detail Layanan / Produk:</h4>
+                      <div class="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                        <table class="min-w-full text-sm">
+                          <thead>
+                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                              <th class="text-left py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Nama Item</th>
+                              <th class="text-left py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Qty</th>
+                              <th class="text-left py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Harga</th>
+                              <th class="text-left py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Catatan</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @foreach($vendorItems as $item)
+                            <tr class="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                              <td class="py-2 px-3">
+                                <span class="font-medium">{{ $item->itemable->name ?? 'N/A' }}</span>
+                                @if($item->itemable && method_exists($item->itemable, 'description'))
+                                  <p class="text-xs text-gray-500 mt-1">{{ Str::limit($item->itemable->description, 80) }}</p>
+                                @endif
+                              </td>
+                              <td class="py-2 px-3">{{ $item->quantity }}</td>
+                              <td class="py-2 px-3">Rp {{ number_format($item->price, 0, ',', '.') }}</td>
+                              <td class="py-2 px-3 text-xs text-gray-500">{{ $item->notes }}</td>
+                            </tr>
+                            @endforeach
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                @endif
                 @empty
                 <tr>
                   <td colspan="5" class="px-6 py-4 text-center">Belum ada vendor ditugaskan.</td>

@@ -47,6 +47,8 @@ class RecommendationController extends Controller
             'items.*.category' => 'required|string',
             'items.*.vendor_id' => 'nullable|exists:vendors,id',
             'items.*.external_vendor_name' => 'nullable|required_without:items.*.vendor_id|string',
+            'items.*.service_name' => 'nullable|string',
+            'items.*.recommendation_type' => 'required|in:primary,alternative,upgrade',
             'items.*.estimated_price' => 'nullable|numeric|min:0',
             'items.*.notes' => 'nullable|string',
         ]);
@@ -71,15 +73,18 @@ class RecommendationController extends Controller
                     'vendor_id' => $item['vendor_id'] ?? null,
                     'external_vendor_name' => $item['external_vendor_name'] ?? null,
                     'category' => $item['category'],
+                    'service_name' => $item['service_name'] ?? null,
+                    'recommendation_type' => $item['recommendation_type'] ?? 'primary',
                     'estimated_price' => $item['estimated_price'] ?? 0,
                     'notes' => $item['notes'] ?? null,
+                    'status' => 'pending',
                     'order' => $index,
                 ]);
             }
 
             // Update Lead Status
             if ($clientRequest->detailed_status !== 'recommendation_sent') {
-                $clientRequest->detailed_status = 'need_recommendation'; // Or keep current
+                $clientRequest->detailed_status = 'need_recommendation'; 
                 $clientRequest->save();
             }
 
@@ -97,7 +102,7 @@ class RecommendationController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Failed to create recommendation', ['error' => $e->getMessage()]);
-            return back()->with('error', 'Failed to create recommendation. Please try again.')->withInput();
+            return back()->with('error', 'Failed to create recommendation: ' . $e->getMessage())->withInput();
         }
     }
 
@@ -138,8 +143,14 @@ class RecommendationController extends Controller
                 'status' => 'on_process'
             ]);
 
-            // TODO: Send Email to Client
-            // Mail::to($clientRequest->client_email)->send(new RecommendationSentMail($recommendation));
+            \App\Models\Notification::create([
+                'user_id' => $clientRequest->user_id,
+                'type' => 'recommendation_sent',
+                'title' => 'Rekomendasi Vendor Baru',
+                'message' => "Admin telah memberikan rekomendasi vendor untuk acara Anda: {$recommendation->title}",
+                'link' => route('client.recommendations.show', $recommendation->id),
+                'is_read' => false,
+            ]); 
 
             ActivityLog::log(
                 'sent_recommendation',
@@ -154,6 +165,80 @@ class RecommendationController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Failed to send recommendation.');
+        }
+    }
+
+    /**
+     * Client accepts a recommendation item
+     */
+    public function acceptItem(Request $request, RecommendationItem $item)
+    {
+        // Check authorization (client or admin)
+        // For simplicity assuming logged in user is client owner or admin
+        
+        $item->update(['status' => 'accepted', 'rejection_reason' => null]);
+        
+        // Auto-assign to Client Request if it's a main vendor role
+        $clientRequest = $item->recommendation->clientRequest;
+        
+        // If the item has a vendor_id, we can assign it
+        if ($item->vendor_id) {
+            // Check if this category matches main vendor roles
+            if (in_array(strtolower($item->category), ['venue', 'organized', 'wedding organizer', 'wo'])) {
+                $clientRequest->vendor_id = $item->vendor_id;
+                $clientRequest->save();
+            }
+        }
+
+        // Check if we should update status to ready_to_confirm
+        if ($clientRequest->hasCompleteData() && $clientRequest->detailed_status === 'recommendation_sent') {
+            $clientRequest->detailed_status = 'ready_to_confirm';
+            $clientRequest->save();
+        }
+
+        return response()->json(['success' => true, 'message' => 'Item accepted']);
+    }
+
+    /**
+     * Client rejects a recommendation item
+     */
+    public function rejectItem(Request $request, RecommendationItem $item)
+    {
+        $item->update([
+            'status' => 'rejected',
+            'rejection_reason' => $request->input('reason')
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Item rejected']);
+    }
+
+    /**
+     * Delete recommendation
+     */
+    public function destroy(LeadRecommendation $recommendation)
+    {
+        $this->authorize('update', $recommendation->clientRequest);
+        
+        $clientRequest = $recommendation->clientRequest;
+        
+        DB::beginTransaction();
+        try {
+            $recommendation->delete(); // Items should cascade if DB formatted correctly, but usually fine
+            
+            // Revert status if no other active recommendations
+            $remainingSent = $clientRequest->recommendations()->where('status', 'sent')->exists();
+            if (!$remainingSent && $clientRequest->detailed_status === 'recommendation_sent') {
+                $clientRequest->update(['detailed_status' => 'need_recommendation']);
+            }
+            
+            DB::commit();
+            
+            return redirect()->route('client-requests.show', $clientRequest)
+                ->with('success', 'Recommendation deleted successfully.');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Failed to delete recommendation: ' . $e->getMessage());
         }
     }
 }

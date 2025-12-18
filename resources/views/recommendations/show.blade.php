@@ -44,6 +44,17 @@
                     Waiting Response
                 </button>
                 @endif
+
+                <form action="{{ route('recommendations.destroy', $recommendation) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this recommendation? This action cannot be undone.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="inline-flex items-center px-4 py-2 bg-white border border-red-300 rounded-lg font-medium text-sm text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition shadow-sm" title="Delete Recommendation">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Delete
+                    </button>
+                </form>
             </div>
         </div>
 
@@ -66,29 +77,51 @@
                     </div>
                     <ul class="divide-y divide-gray-200">
                         @foreach($recommendation->items as $item)
-                        <li class="p-6 hover:bg-gray-50 transition">
+                        <li class="p-6 hover:bg-gray-50 transition relative">
                             <div class="flex items-start justify-between">
                                 <div class="flex-1">
-                                    <div class="flex items-center mb-1">
-                                        <span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 mr-2">
+                                    <div class="flex items-center space-x-2 mb-1">
+                                        <span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
                                             {{ $item->category }}
                                         </span>
-                                        <h3 class="text-base font-semibold text-gray-900">
-                                            {{ $item->vendor_name }}
-                                        </h3>
-                                        @if(!$item->vendor_id)
-                                        <span class="ml-2 text-xs text-gray-400 border border-gray-200 rounded px-1">External</span>
+                                        <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide {{ $item->recommendation_type_badge_color }}">
+                                            {{ $item->recommendation_type }}
+                                        </span>
+                                        @if($item->status !== 'pending')
+                                            <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide {{ $item->status_badge_color }}">
+                                                {{ $item->status }}
+                                            </span>
                                         @endif
                                     </div>
+                                    
+                                    <h3 class="text-base font-bold text-gray-900 mt-2">
+                                        {{ $item->vendor_name }}
+                                        @if(!$item->vendor_id)
+                                            <span class="ml-2 text-xs font-normal text-gray-400 border border-gray-200 rounded px-1">External</span>
+                                        @endif
+                                    </h3>
+                                    
+                                    @if($item->service_name)
+                                        <p class="text-sm font-medium text-blue-600">{{ $item->service_name }}</p>
+                                    @endif
+
                                     @if($item->notes)
-                                    <p class="text-sm text-gray-600 mt-1">{{ $item->notes }}</p>
+                                    <p class="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded border border-gray-100 inline-block">
+                                        <span class="font-semibold text-gray-500 text-xs uppercase">Note:</span> {{ $item->notes }}
+                                    </p>
+                                    @endif
+
+                                    @if($item->status === 'rejected' && $item->rejection_reason)
+                                    <div class="mt-3 p-3 bg-red-50 border border-red-100 rounded-md">
+                                        <p class="text-xs font-bold text-red-800 uppercase mb-1">Client Rejection Reason:</p>
+                                        <p class="text-sm text-red-700">{{ $item->rejection_reason }}</p>
+                                    </div>
                                     @endif
                                 </div>
                                 <div class="text-right ml-4">
-                                    <p class="text-sm font-medium text-gray-900">
+                                    <p class="text-lg font-bold text-gray-900">
                                         Rp {{ number_format($item->estimated_price, 0, ',', '.') }}
                                     </p>
-                                    <p class="text-xs text-gray-500">Est. Price</p>
                                 </div>
                             </div>
                         </li>

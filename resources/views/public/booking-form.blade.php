@@ -77,40 +77,65 @@
             @endif
 
             <!-- Main Card -->
-            <div class="bg-white rounded-2xl shadow-xl p-8">
+            <div class="bg-white rounded-2xl shadow-xl p-8" x-data="bookingWizard()">
                 <!-- Progress Step Indicators -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between">
+                        <!-- Step 1: Form Details -->
                         <div class="flex flex-col items-center flex-1">
-                            <div class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">1</div>
-                            <p class="text-xs mt-2 font-medium text-blue-600">
-                                @if(isset($user))
-                                    Form Details
-                                @else
-                                    Login/Register
-                                @endif
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all"
+                                 :class="currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'">
+                                1
+                            </div>
+                            <p class="text-xs mt-2 font-medium transition-all"
+                               :class="currentStep >= 1 ? 'text-blue-600' : 'text-gray-500'">
+                                Form Details
                             </p>
                         </div>
-                        <div class="flex-1 h-1 bg-gray-200 mx-2"></div>
+                        <div class="flex-1 h-1 mx-2 transition-all"
+                             :class="currentStep >= 2 ? 'bg-blue-600' : 'bg-gray-200'"></div>
+                        
+                        <!-- Step 2: Review Booking -->
                         <div class="flex flex-col items-center flex-1">
-                            <div class="w-10 h-10 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center font-semibold">2</div>
-                            <p class="text-xs mt-2 font-medium text-gray-500">
-                                @if(isset($user))
-                                    Review Booking
-                                @else
-                                    Form Details
-                                @endif
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all"
+                                 :class="currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'">
+                                2
+                            </div>
+                            <p class="text-xs mt-2 font-medium transition-all"
+                               :class="currentStep >= 2 ? 'text-blue-600' : 'text-gray-500'">
+                                Review Booking
                             </p>
                         </div>
-                        <div class="flex-1 h-1 bg-gray-200 mx-2"></div>
+                        <div class="flex-1 h-1 mx-2 transition-all"
+                             :class="currentStep >= 3 ? 'bg-blue-600' : 'bg-gray-200'"></div>
+                        
+                        <!-- Step 3: Submit -->
                         <div class="flex flex-col items-center flex-1">
-                            <div class="w-10 h-10 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center font-semibold">3</div>
-                            <p class="text-xs mt-2 font-medium text-gray-500">Submit</p>
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all"
+                                 :class="currentStep >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'">
+                                3
+                            </div>
+                            <p class="text-xs mt-2 font-medium transition-all"
+                               :class="currentStep >= 3 ? 'text-blue-600' : 'text-gray-500'">
+                                Submit
+                            </p>
                         </div>
-                        <div class="flex-1 h-1 bg-gray-200 mx-2"></div>
+                        <div class="flex-1 h-1 mx-2 transition-all"
+                             :class="currentStep >= 4 ? 'bg-blue-600' : 'bg-gray-200'"></div>
+                        
+                        <!-- Step 4: Confirmed -->
                         <div class="flex flex-col items-center flex-1">
-                            <div class="w-10 h-10 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center font-semibold">4</div>
-                            <p class="text-xs mt-2 font-medium text-gray-500">Confirmed</p>
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all"
+                                 :class="currentStep >= 4 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'">
+                                <span x-show="currentStep < 4">4</span>
+                                <svg x-show="currentStep >= 4" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                            <p class="text-xs mt-2 font-medium transition-all"
+                               :class="currentStep >= 4 ? 'text-green-600' : 'text-gray-500'">
+                                Confirmed
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -134,8 +159,20 @@
                     </div>
                 @endif
 
-                <form action="{{ route('public.booking.store') }}" method="POST" class="space-y-6">
+                <form action="{{ route('public.booking.store') }}" method="POST" class="space-y-6" id="booking-form">
                     @csrf
+                    
+                    {{-- Hidden field for package --}}
+                    @if($package)
+                        <input type="hidden" name="event_package_id" value="{{ $package->id }}">
+                    @endif
+
+                    <!-- STEP 1: FORM DETAILS -->
+                    <div x-show="currentStep === 1" 
+                         x-transition:enter="transition ease-out duration-300 transform"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         class="space-y-6">
 
                     <!-- Personal Information Section -->
                     <div class="border-b border-gray-200 pb-6">
@@ -145,44 +182,30 @@
                             </svg>
                             Informasi Pribadi
                         </h2>
-
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label for="client_name" class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap *</label>
-                                <input type="text" name="client_name" id="client_name" 
-                                    value="{{ old('client_name', $user->name ?? '') }}" required
+                                <input type="text" name="client_name" id="client_name" x-model="formData.client_name" required
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('client_name') border-red-500 @enderror"
-                                    placeholder="Masukkan nama lengkap Anda"
-                                    @if(isset($user) && $user) readonly @endif>
-                                @if(isset($user) && $user)
-                                    <p class="mt-1 text-xs text-gray-500">Data diambil dari akun Anda</p>
-                                @endif
+                                    placeholder="Nama Lengkap Anda">
                                 @error('client_name')
                                     <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
-
                             <div>
                                 <label for="client_email" class="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                                <input type="email" name="client_email" id="client_email" 
-                                    value="{{ old('client_email', $user->email ?? '') }}" required
+                                <input type="email" name="client_email" id="client_email" x-model="formData.client_email" required
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('client_email') border-red-500 @enderror"
-                                    placeholder="email@example.com"
-                                    @if(isset($user) && $user) readonly @endif>
-                                @if(isset($user) && $user)
-                                    <p class="mt-1 text-xs text-gray-500">Data diambil dari akun Anda</p>
-                                @endif
+                                    placeholder="email@example.com">
                                 @error('client_email')
                                     <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
-
                             <div class="md:col-span-2">
-                                <label for="client_phone" class="block text-sm font-medium text-gray-700 mb-2">No. WhatsApp/Telepon *</label>
-                                <input type="tel" name="client_phone" id="client_phone" 
-                                    value="{{ old('client_phone', $user->phone_number ?? '') }}" required
+                                <label for="client_phone" class="block text-sm font-medium text-gray-700 mb-2">Nomor WhatsApp *</label>
+                                <input type="tel" name="client_phone" id="client_phone" x-model="formData.client_phone" required
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('client_phone') border-red-500 @enderror"
-                                    placeholder="08xxxxxxxxxx">
+                                    placeholder="Contoh: 081234567890">
                                 @error('client_phone')
                                     <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -202,7 +225,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label for="event_type" class="block text-sm font-medium text-gray-700 mb-2">Tipe Event *</label>
-                                <select name="event_type" id="event_type" required
+                                <select name="event_type" id="event_type" required x-model="formData.event_type"
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('event_type') border-red-500 @enderror"
                                     @if(isset($package) && $package->event_type) readonly @endif>
                                     <option value="">Pilih Tipe Event</option>
@@ -229,7 +252,8 @@
 
                             <div>
                                 <label for="event_date" class="block text-sm font-medium text-gray-700 mb-2">Tanggal Event *</label>
-                                <input type="date" name="event_date" id="event_date" value="{{ old('event_date') }}" required 
+                                <input type="date" name="event_date" id="event_date" 
+                                    x-model="formData.event_date" required 
                                     min="{{ date('Y-m-d', strtotime('+1 day')) }}"
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('event_date') border-red-500 @enderror">
                                 @error('event_date')
@@ -237,11 +261,48 @@
                                 @enderror
                             </div>
 
+                            {{-- Wedding Couple Information (Only shown if Wedding) --}}
+                            <div x-show="formData.event_type === 'Wedding'" x-transition 
+                                 class="md:col-span-2 bg-pink-50 rounded-xl p-6 border border-pink-100">
+                                <h3 class="text-lg font-medium text-pink-900 mb-4 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                                    </svg>
+                                    Data Pasangan Pengantin
+                                </h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Mempelai Pria</label>
+                                        <input type="text" name="groom_name" x-model="formData.groom_name"
+                                            :required="formData.event_type === 'Wedding' && !formData.fill_couple_later"
+                                            :disabled="formData.fill_couple_later"
+                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent placeholder-gray-400"
+                                            placeholder="Nama Mempelai Pria">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Mempelai Wanita</label>
+                                        <input type="text" name="bride_name" x-model="formData.bride_name"
+                                            :required="formData.event_type === 'Wedding' && !formData.fill_couple_later"
+                                            :disabled="formData.fill_couple_later"
+                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent placeholder-gray-400"
+                                            placeholder="Nama Mempelai Wanita">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="inline-flex items-center">
+                                            <input type="hidden" name="fill_couple_later" :value="formData.fill_couple_later ? 1 : 0">
+                                            <input type="checkbox" x-model="formData.fill_couple_later" class="rounded border-gray-300 text-pink-600 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50">
+                                            <span class="ml-2 text-sm text-gray-600">Saya belum memiliki data lengkap, isi nanti melalui dashboard</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div>
                                 <label for="budget" class="block text-sm font-medium text-gray-700 mb-2">Budget (Opsional)</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-3.5 text-gray-500 font-medium">Rp</span>
-                                    <input type="number" name="budget" id="budget" value="{{ old('budget') }}" min="0" step="100000"
+                                    <input type="number" name="budget" id="budget" 
+                                        x-model="formData.budget" min="0" step="100000"
                                         class="w-full pl-14 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('budget') border-red-500 @enderror"
                                         placeholder="5000000">
                                 </div>
@@ -376,6 +437,7 @@
                             <div class="md:col-span-2">
                                 <label for="message" class="block text-sm font-medium text-gray-700 mb-2">Pesan / Detail Kebutuhan</label>
                                 <textarea name="message" id="message" rows="4"
+                                    x-model="formData.message"
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('message') border-red-500 @enderror"
                                     placeholder="Ceritakan detail kebutuhan event Anda...">{{ old('message') }}</textarea>
                                 @error('message')
@@ -384,24 +446,160 @@
                             </div>
                         </div>
                     </div>
+                </div> <!-- END STEP 1 -->
+
+                <!-- STEP 2: REVIEW BOOKING -->
+                <div x-show="currentStep === 2" 
+                     x-transition:enter="transition ease-out duration-300 transform"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     class="space-y-6">
+                    
+                    <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Review Detail Booking</h3>
+                        
+                        <div class="space-y-4">
+                            <!-- Personal Info Review -->
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Informasi Pribadi</h4>
+                                <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <span class="block text-xs text-gray-400">Nama Lengkap</span>
+                                        <span class="font-medium text-gray-900" x-text="formData.client_name"></span>
+                                    </div>
+                                    <div>
+                                        <span class="block text-xs text-gray-400">Email</span>
+                                        <span class="font-medium text-gray-900" x-text="formData.client_email"></span>
+                                    </div>
+                                    <div>
+                                        <span class="block text-xs text-gray-400">WhatsApp</span>
+                                        <span class="font-medium text-gray-900" x-text="formData.client_phone"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-gray-200 my-4"></div>
+
+                            <!-- Event Info Review -->
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Detail Event</h4>
+                                <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <span class="block text-xs text-gray-400">Tipe Event</span>
+                                        <span class="font-medium text-gray-900" x-text="formData.event_type"></span>
+                                    </div>
+                                    <div>
+                                        <span class="block text-xs text-gray-400">Tanggal Event</span>
+                                        <span class="font-medium text-gray-900" x-text="formData.event_date"></span>
+                                    </div>
+                                    <div x-show="formData.budget">
+                                        <span class="block text-xs text-gray-400">Budget</span>
+                                        <span class="font-medium text-gray-900">Rp <span x-text="formData.budget"></span></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Wedding Couple Review (Conditional) -->
+                            <div x-show="formData.event_type === 'Wedding'" class="bg-pink-50 p-4 rounded-lg mt-4">
+                                <h4 class="text-sm font-medium text-pink-800 uppercase tracking-wider mb-2">Pasangan Pengantin</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <template x-if="!formData.fill_couple_later">
+                                        <div class="contents">
+                                            <div>
+                                                <span class="block text-xs text-pink-400">Mempelai Pria</span>
+                                                <span class="font-medium text-pink-900" x-text="formData.groom_name"></span>
+                                            </div>
+                                            <div>
+                                                <span class="block text-xs text-pink-400">Mempelai Wanita</span>
+                                                <span class="font-medium text-pink-900" x-text="formData.bride_name"></span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <template x-if="formData.fill_couple_later">
+                                        <div class="col-span-2 text-sm text-pink-700 italic">
+                                            Data pasangan akan dilengkapi nanti via dashboard
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-gray-200 my-4"></div>
+
+                            <!-- Message Review -->
+                            <div x-show="formData.message">
+                                <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Pesan / Catatan</h4>
+                                <p class="mt-1 text-gray-700 bg-white p-3 rounded border border-gray-100" x-text="formData.message"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div> <!-- END STEP 2 -->
+
+                <!-- STEP 3: SUBMIT CONFIRMATION -->
+                <div x-show="currentStep === 3" 
+                     x-transition:enter="transition ease-out duration-300 transform"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     class="text-center py-8">
+                    
+                    <div class="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-6 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-20"></span>
+                        <svg class="w-10 h-10 text-blue-600 relative" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Siap untuk Submit?</h3>
+                    <p class="text-gray-600 max-w-md mx-auto mb-8">
+                        Pastikan semua data sudah benar. Setelah submit, tim kami akan segera memproses permintaan Anda.
+                    </p>
+                </div> <!-- END STEP 3 -->
+
+                <!-- Navigation Buttons -->
+                <div class="flex items-center justify-between pt-6 border-t border-gray-100">
+                    <!-- Back Button -->
+                    <button type="button" 
+                            x-show="currentStep > 1"
+                            @click="prevStep()"
+                            class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        Kembali
+                    </button>
+                    
+                    <!-- Back to Home (Show only on Step 1) -->
+                    <a href="{{ route('landing.page') }}" 
+                       x-show="currentStep === 1"
+                       class="text-gray-600 hover:text-gray-900 font-medium flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Kembali ke Home
+                    </a>
+
+                    <!-- Next Button -->
+                    <button type="button" 
+                            x-show="currentStep < 3"
+                            @click="nextStep()"
+                            class="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition transform hover:scale-105 flex items-center shadow-lg shadow-blue-200">
+                        Review Booking
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
 
                     <!-- Submit Button -->
-                    <div class="flex items-center justify-between pt-4">
-                        <a href="{{ route('landing.page') }}" class="text-gray-600 hover:text-gray-900 font-medium">
-                            ← Kembali ke Home
-                        </a>
-                        <button type="submit" class="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition transform hover:scale-105">
-                            @if(isset($user))
-                                Submit Booking Request
-                            @else
-                                Lanjutkan ke Registrasi
-                            @endif
-                            <svg class="w-5 h-5 inline-block ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </form>
+                    <button type="button" 
+                            x-show="currentStep === 3"
+                            @click="submitForm()"
+                            class="px-8 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition transform hover:scale-105 flex items-center shadow-lg shadow-green-200">
+                        Submit Booking Request
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
             </div>
 
             <!-- Info Box -->
@@ -435,6 +633,105 @@
         </div>
     </div>
 
+    {{-- Alpine.js Booking Wizard Component --}}
+    <script>
+        function bookingWizard() {
+            return {
+                currentStep: 1,
+                formData: {
+                    // Personal & Event Info
+                    client_name: "{{ old('client_name', optional($user)->name ?? '') }}",
+                    client_email: "{{ old('client_email', optional($user)->email ?? '') }}",
+                    client_phone: "{{ old('client_phone', optional($user)->phone ?? optional($user)->phone_number ?? '') }}",
+                    event_type: "{{ old('event_type', optional($package)->event_type ?? '') }}",
+                    event_date: "{{ old('event_date') }}",
+                    budget: "{{ old('budget') }}",
+                    message: "{{ old('message') }}",
+                    
+                    // Wedding couple fields
+                    groom_name: "{{ old('groom_name') }}",
+                    bride_name: "{{ old('bride_name') }}",
+                    fill_couple_later: {{ old('fill_couple_later') ? 'true' : 'false' }},
+                },
+                
+                nextStep() {
+                    if (this.validateCurrentStep()) {
+                        this.currentStep++;
+                        this.scrollToTop();
+                    }
+                },
+                
+                prevStep() {
+                    if (this.currentStep > 1) {
+                        this.currentStep--;
+                        this.scrollToTop();
+                    }
+                },
+                
+                goToStep(step) {
+                    // Only allow going back or to next step if current is valid
+                    if (step < this.currentStep) {
+                        this.currentStep = step;
+                        this.scrollToTop();
+                    }
+                },
+                
+                validateCurrentStep() {
+                    if (this.currentStep === 1) {
+                        // Validate required fields in step 1
+                        const form = document.querySelector('form');
+                        // Select inputs that are visible and required
+                        const visibleRequiredFields = Array.from(form.querySelectorAll('[required]')).filter(field => {
+                            return field.offsetParent !== null; // Check visibility
+                        });
+                        
+                        let isValid = true;
+                        
+                        visibleRequiredFields.forEach(field => {
+                            if (!field.value) {
+                                isValid = false;
+                                field.classList.add('border-red-500');
+                                // Add shake animation or highlight
+                            } else {
+                                field.classList.remove('border-red-500');
+                            }
+                        });
+                        
+                        // Validate Email format
+                        if (this.formData.client_email && !this.isValidEmail(this.formData.client_email)) {
+                            isValid = false;
+                            alert('Format email tidak valid');
+                        }
+                        
+                        if (!isValid) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Mohon Lengkapi Data',
+                                text: 'Beberapa field wajib belum diisi',
+                                confirmButtonColor: '#012A4A'
+                            });
+                        }
+                        
+                        return isValid;
+                    }
+                    return true;
+                },
+
+                isValidEmail(email) {
+                    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+                },
+                
+                scrollToTop() {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+                
+                submitForm() {
+                    document.querySelector('form').submit();
+                }
+            }
+        }
+    </script>
+
     {{-- SweetAlert for Duplicate Booking Check --}}
     @if(session('booking_check'))
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -460,7 +757,7 @@
                             // Continue with booking - do nothing, stay on form
                         } else if (result.isDenied) {
                             // Redirect to bookings list
-                            window.location.href = "{{ route('client.requests.index') }}";
+                            window.location.href = "{{ route('client.dashboard') }}";
                         } else {
                             // Cancel - go back to package detail
                             window.history.back();

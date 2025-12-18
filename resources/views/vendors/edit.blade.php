@@ -37,11 +37,14 @@
                         @csrf
                         @method('PUT')
 
-                        <!-- Business Name -->
+                        <!-- Business Name / Brand Name -->
                         <div>
-                            <x-input-label for="business_name" :value="__('Business Name')" />
-                            <x-text-input id="business_name" class="block mt-1 w-full" type="text" name="business_name" :value="old('business_name', $vendor->user->name)" required autofocus />
-                            <x-input-error :messages="$errors->get('business_name')" class="mt-2" />
+                            <x-input-label for="brand_name" :value="__('Nama Vendor / Brand')" />
+                            <x-text-input id="brand_name" class="block mt-1 w-full" type="text" name="brand_name" :value="old('brand_name', $vendor->brand_name ?? $vendor->user->name)" required autofocus />
+                            <p class="mt-1 text-xs text-gray-500">
+                                💡 Otomatis terisi dari data admin, namun Anda bisa mengubahnya
+                            </p>
+                            <x-input-error :messages="$errors->get('brand_name')" class="mt-2" />
                         </div>
 
                         <!-- Username -->
@@ -54,7 +57,10 @@
                         <!-- Email Address -->
                         <div class="mt-4">
                             <x-input-label for="email" :value="__('Email Address')" />
-                            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $vendor->user->email)" required />
+                            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $vendor->email ?? $vendor->user->email)" required />
+                            <p class="mt-1 text-xs text-gray-500">
+                                💡 Otomatis terisi dari data admin, namun Anda bisa mengubahnya
+                            </p>
                             <x-input-error :messages="$errors->get('email')" class="mt-2" />
                         </div>
 

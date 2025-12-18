@@ -20,6 +20,10 @@ class ClientRequestController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+        
+        // Mark 'new_booking' notifications as read logic
+        $user->unreadNotifications()->where('type', 'new_booking')->update(['is_read' => true]);
+
         $viewType = $request->get('view', 'all');
 
         // Simplified query to debug relationship
@@ -203,6 +207,14 @@ class ClientRequestController extends Controller
             $validated['responded_at'] = now();
         }
 
+        // Sync detailed_status with status
+        if ($validated['status'] === 'on_process' && in_array($clientRequest->detailed_status, ['new', 'pending', 'contacted'])) {
+            $validated['detailed_status'] = 'on_process';
+        }
+        if ($validated['status'] === 'done') {
+            $validated['detailed_status'] = 'done';
+        }
+
         $clientRequest->update($validated);
 
         return redirect()->route('client-requests.index')
@@ -227,6 +239,15 @@ class ClientRequestController extends Controller
         }
 
         $clientRequest->status = $newStatus;
+        
+        // Sync detailed_status with status change
+        if ($newStatus === 'on_process' && in_array($clientRequest->detailed_status, ['new', 'pending', 'contacted'])) {
+            $clientRequest->detailed_status = 'on_process';
+        }
+        if ($newStatus === 'done') {
+            $clientRequest->detailed_status = 'done';
+        }
+
         $clientRequest->save();
 
         // 🔔 CREATE NOTIFICATION for client
@@ -245,10 +266,230 @@ class ClientRequestController extends Controller
             ]);
         }
 
+        // 🔔 NOTIFICATION FOR VENDOR (When status -> on_process)
+        if ($newStatus === 'on_process' && $clientRequest->vendor_id) {
+             $vendor = \App\Models\Vendor::find($clientRequest->vendor_id);
+             if ($vendor && $vendor->user) {
+                 \App\Models\Notification::create([
+                     'user_id' => $vendor->user->id,
+                     'type' => 'vendor_assignment',
+                     'title' => 'Event Baru: On Process',
+                     'message' => 'Anda terlibat dalam event baru yang sedang diproses.',
+                     'link' => route('vendor.events.index'), 
+                     'is_read' => false,
+                     'data' => ['client_request_id' => $clientRequest->id]
+                 ]);
+             }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Status updated successfully',
         ]);
+    }
+
+    /**
+     * Convert booking to event (explicit conversion)
+     */
+    public function convertToEvent(ClientRequest $clientRequest)
+    {
+        $this->authorize('update', $clientRequest);
+        
+        // Check if already converted
+        if ($clientRequest->event) {
+            return back()->with('error', 'Booking ini sudah dikonversi menjadi Event.');
+        }
+        
+        // Validate readiness
+        if (!$clientRequest->isReadyToConvert()) {
+            $checklist = $clientRequest->getReadinessChecklist();
+            $incomplete = collect($checklist)
+                ->filter(fn($item) => !$item['completed'])
+                ->pluck('label')
+                ->join(', ');
+                
+            return back()->with('error', 
+                "Booking belum siap dikonversi. Yang masih perlu dilengkapi: {$incomplete}");
+        }
+        
+        \DB::beginTransaction();
+        try {
+            // Determine Venue ID from assigned vendor or recommendations
+        $venueId = null;
+        if ($clientRequest->vendor && ($clientRequest->vendor->serviceType->name ?? '') === 'Venue') {
+            $venueId = $clientRequest->vendor_id;
+        } else {
+            // Check accepted recommendations for Venue
+            $venueItem = \App\Models\RecommendationItem::whereHas('recommendation', function($q) use ($clientRequest) {
+                $q->where('client_request_id', $clientRequest->id);
+            })->where('status', 'accepted')
+              ->where('category', 'Venue')
+              ->first();
+              
+            if ($venueItem && $venueItem->vendor_id) {
+                $venueId = $venueItem->vendor_id;
+            }
+        }
+
+        // Create Event
+        $event = \App\Models\Event::create([
+            'client_request_id' => $clientRequest->id,
+            'user_id' => $clientRequest->user_id,
+            'venue_id' => $venueId,
+            'event_name' => $clientRequest->event_type . ' - ' . $clientRequest->client_name,
+            'description' => $clientRequest->message . "\n\nBudget: Rp " . number_format($clientRequest->budget, 0, ',', '.'),
+            'start_time' => $clientRequest->event_date,
+            'end_time' => $clientRequest->event_date->copy()->addHours(6), // Default 6 hours duration
+            'client_name' => $clientRequest->client_name,
+            'client_email' => $clientRequest->client_email,
+            'client_phone' => $clientRequest->client_phone,
+            'status' => 'planning', // Events start in planning stage
+        ]);
+            
+            // Update booking status
+            $clientRequest->update([
+                'detailed_status' => 'confirmed',
+                'status' => 'done'
+            ]);
+            
+            // Attach vendors from package if exists
+            if ($clientRequest->eventPackage) {
+                $this->attachPackageVendorsToEvent($event, $clientRequest->eventPackage);
+            }
+            
+            // Attach single vendor if selected
+            if ($clientRequest->vendor_id) {
+                // Check if not already attached (e.g. from package)
+                if (!$event->vendors()->where('vendor_id', $clientRequest->vendor_id)->exists()) {
+                    $event->vendors()->attach($clientRequest->vendor_id, [
+                        'role' => $clientRequest->vendor->serviceType->name ?? 'Vendor',
+                        'status' => 'confirmed',
+                        'source' => 'client_choice'
+                    ]);
+                    
+                    // Auto-check checklist items for this vendor
+                    \App\Services\ChecklistVendorMappingService::autoCheckItems($event->id, $clientRequest->vendor);
+                }
+            }
+            
+            // Attach Accepted Recommendation Items
+            $acceptedItems = \App\Models\RecommendationItem::whereHas('recommendation', function($q) use ($clientRequest) {
+                $q->where('client_request_id', $clientRequest->id);
+            })->where('status', 'accepted')->whereNotNull('vendor_id')->get();
+
+            foreach ($acceptedItems as $item) {
+                if (!$event->vendors()->where('vendor_id', $item->vendor_id)->exists()) {
+                    $event->vendors()->attach($item->vendor_id, [
+                        'role' => $item->category,
+                        'status' => 'confirmed',
+                        'source' => 'recommendation',
+                        'agreed_price' => $item->min_price ?? 0 // Use min_price as initial agreed price
+                    ]);
+                    
+                    // Auto-check checklist items for this vendor
+                    $vendor = \App\Models\Vendor::find($item->vendor_id);
+                    if ($vendor) {
+                        \App\Services\ChecklistVendorMappingService::autoCheckItems($event->id, $vendor);
+                    }
+                }
+            }
+            
+            // Link checklist to this event
+            $checklist = \App\Models\ClientChecklist::where('client_request_id', $clientRequest->id)->first();
+            if ($checklist && !$checklist->event_id) {
+                $checklist->update(['event_id' => $event->id]);
+            }
+            
+            // Send notification to client
+            // Send notification to client
+            \App\Models\Notification::create([
+                'user_id' => $clientRequest->user_id,
+                'type' => 'event_created',
+                'title' => 'Event Anda Telah Dikonfirmasi! 🎉',
+                'message' => "Event {$event->event_name} pada {$event->start_time->format('d M Y')} telah dibuat dan siap dijalankan.",
+                'link' => route('events.show', $event->id),
+                'is_read' => false,
+            ]);
+            
+            // Notify all involved vendors
+            foreach ($event->vendors as $vendor) {
+                if ($vendor->user) {
+                    \App\Models\Notification::create([
+                        'user_id' => $vendor->user->id,
+                        'type' => 'event_confirmed',
+                        'title' => 'Event Dikonfirmasi',
+                        'message' => "Event {$event->event_name} pada {$event->start_time->format('d M Y')} telah dikonfirmasi. Anda terlibat sebagai {$vendor->pivot->role}.",
+                        'link' => route('events.show', $event->id),
+                        'is_read' => false,
+                    ]);
+                }
+            }
+            
+            \DB::commit();
+            
+            return redirect()
+                ->route('events.show', $event->id)
+                ->with('success', '✓ Event berhasil dibuat dari booking ini!');
+                
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Failed to convert booking to event: ' . $e->getMessage());
+            return back()->with('error', 'Gagal membuat event: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Attach vendors from package to event
+     */
+    private function attachPackageVendorsToEvent(\App\Models\Event $event, \App\Models\EventPackage $package)
+    {
+        $attachedVendors = [];
+        
+        foreach ($package->items as $item) {
+            $vendor = null;
+            $itemable = null;
+            $itemName = '';
+            $itemPrice = 0;
+            
+            if ($item->vendorCatalogItem && $item->vendorCatalogItem->vendor) {
+                $vendor = $item->vendorCatalogItem->vendor;
+                $itemable = $item->vendorCatalogItem;
+                $itemName = $item->vendorCatalogItem->name;
+                $itemPrice = $item->vendorCatalogItem->price;
+            } elseif ($item->vendorPackage && $item->vendorPackage->vendor) {
+                $vendor = $item->vendorPackage->vendor;
+                $itemable = $item->vendorPackage;
+                $itemName = $item->vendorPackage->name;
+                $itemPrice = $item->vendorPackage->price;
+            }
+            
+            if ($vendor && !in_array($vendor->id, $attachedVendors)) {
+                $price = 0;
+                if ($item->vendorCatalogItem) $price = $item->vendorCatalogItem->price;
+                elseif ($item->vendorPackage) $price = $item->vendorPackage->price;
+
+                $event->vendors()->attach($vendor->id, [
+                    'role' => $vendor->serviceType->name ?? 'Vendor',
+                    'status' => 'confirmed',
+                    'source' => 'package',
+                    'agreed_price' => $price
+                ]);
+                $attachedVendors[] = $vendor->id;
+            }
+            
+            // Create EventVendorItem for detailed scope tracking
+            if ($vendor && $itemable) {
+                \App\Models\EventVendorItem::create([
+                    'event_id' => $event->id,
+                    'vendor_id' => $vendor->id,
+                    'itemable_type' => get_class($itemable),
+                    'itemable_id' => $itemable->id,
+                    'quantity' => $item->quantity ?? 1,
+                    'price' => $itemPrice,
+                    'notes' => "Dari paket: {$package->name}"
+                ]);
+            }
+        }
     }
 
     /**
@@ -322,36 +563,6 @@ class ClientRequestController extends Controller
             'assignee_name' => $newAssignee->name,
             'status_html' => $clientRequest->status_badge_color, // For UI update
         ]);
-    }
-
-    /**
-     * Convert client request to event
-     */
-    public function convertToEvent(ClientRequest $clientRequest)
-    {
-        $user = Auth::user();
-        
-        // Only Owner, Admin can convert
-        if (!$user->hasAnyRole(['SuperUser', 'Owner', 'Admin'])) {
-            return redirect()->back()->with('error', 'Unauthorized to convert request to event.');
-        }
-
-        // Check if already converted
-        if ($clientRequest->isConverted()) {
-            return redirect()->route('events.show', $clientRequest->event)
-                ->with('info', 'Request ini sudah diconvert menjadi event.');
-        }
-
-        // Redirect to create event with pre-filled data
-        return redirect()->route('events.create', [
-            'client_request_id' => $clientRequest->id,
-            'client_name' => $clientRequest->client_name,
-            'client_email' => $clientRequest->client_email,
-            'client_phone' => $clientRequest->client_phone,
-            'event_name' => $clientRequest->event_type . ' - ' . $clientRequest->client_name,
-            'start_time' => $clientRequest->event_date->format('Y-m-d'),
-            'description' => $clientRequest->message,
-        ])->with('success', 'Silakan lengkapi data event. Data dari request sudah diisi otomatis.');
     }
 
     /**

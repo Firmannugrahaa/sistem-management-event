@@ -62,6 +62,16 @@ class Event extends Model
         return $this->hasOne(Invoice::class);
     }
 
+    public function crews(): HasMany
+    {
+        return $this->hasMany(EventCrew::class);
+    }
+
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(EventTask::class);
+    }
+
     public function vendorItems(): HasMany
     {
         return $this->hasMany(EventVendorItem::class);

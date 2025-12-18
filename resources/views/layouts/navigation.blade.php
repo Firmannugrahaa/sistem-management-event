@@ -80,7 +80,8 @@
         {{-- Navigation Links --}}
         <div class="flex-1 flex flex-col justify-between py-6 px-3 overflow-y-auto">
             <div class="space-y-2">
-                {{-- Dashboard --}}
+                {{-- Dashboard (Hidden for Staff - they have dedicated dashboard) --}}
+                @if(!auth()->user()->hasRole('Staff'))
                 <a href="{{ route('dashboard') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] {{ request()->routeIs('dashboard') ? 'bg-[#012A4A] text-white' : 'text-[#1A1A1A]' }}">
                     <svg class="w-6 h-6 flex-shrink-0 p-1 rounded {{ request()->routeIs('dashboard') ? 'bg-[#c1dfeb] text-[#012A4A]' : 'bg-[#012A4A] text-white' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -89,6 +90,7 @@
                     </svg>
                     <span class="text-sm font-medium whitespace-nowrap" x-show="sidebarOpen" x-transition>Dashboard</span>
                 </a>
+                @endif
 
                 {{-- Client Portal (For Clients/Users) --}}
                 @if(auth()->user()->hasRole(['Client', 'User']))
@@ -99,6 +101,33 @@
                     </svg>
                     <span class="text-sm font-medium whitespace-nowrap" x-show="sidebarOpen" x-transition>My Requests</span>
                 </a>
+                @endif
+
+                {{-- Staff Portal (For Staff) --}}
+                @if(auth()->user()->hasRole('Staff'))
+                <div x-data="{ dropdownOpen: {{ request()->routeIs('staff.*') ? 'true' : 'false' }} }">
+                    <button @click="dropdownOpen = !dropdownOpen"
+                        class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] w-full text-left {{ request()->routeIs('staff.*') ? 'bg-[#012A4A] text-white' : 'text-[#1A1A1A]' }}">
+                        <svg class="w-6 h-6 flex-shrink-0 p-1 rounded {{ request()->routeIs('staff.*') ? 'bg-[#c1dfeb] text-[#012A4A]' : 'bg-[#012A4A] text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                        <span class="text-sm font-medium whitespace-nowrap flex-1" x-show="sidebarOpen" x-transition>Staff Portal</span>
+                        <svg :class="{'rotate-180': dropdownOpen}" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="sidebarOpen" x-transition>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+
+                    <div x-show="dropdownOpen" x-transition class="mt-1 space-y-1 pl-4">
+                        <a href="{{ route('staff.dashboard') }}"
+                            class="flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] {{ request()->routeIs('staff.dashboard') ? 'bg-[#E8F5E9] text-[#27AE60]' : 'text-[#666666]' }}">
+                            <span class="text-sm whitespace-nowrap" x-show="sidebarOpen" x-transition>Dashboard</span>
+                        </a>
+                        <a href="{{ route('staff.events.index') }}"
+                            class="flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] {{ request()->routeIs('staff.events.*') ? 'bg-[#E8F5E9] text-[#27AE60]' : 'text-[#666666]' }}">
+                            <span class="text-sm whitespace-nowrap" x-show="sidebarOpen" x-transition>My Events</span>
+                        </a>
+                    </div>
+                </div>
                 @endif
 
                 {{-- Manage Team/Vendor Dropdown --}}
@@ -142,7 +171,12 @@
                         <path d="M21.5 12H16l-2 3h-4l-2-3H2.5"></path>
                         <path d="M5.5 5.1L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.5-6.9A2 2 0 0016.8 4H7.2a2 2 0 00-1.7 1.1z"></path>
                     </svg>
-                    <span class="text-sm font-medium whitespace-nowrap" x-show="sidebarOpen" x-transition>Leads / Inbox</span>
+                    <span class="text-sm font-medium whitespace-nowrap leading-none" x-show="sidebarOpen" x-transition>Leads / Inbox</span>
+                    @if(isset($leadsBadgeCount) && $leadsBadgeCount > 0)
+                        <span class="ml-auto inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1 text-xs font-bold text-white bg-red-600 rounded-full" x-show="sidebarOpen" x-transition>
+                            {{ $leadsBadgeCount }}
+                        </span>
+                    @endif
                 </a>
                 @endif
 
@@ -260,7 +294,12 @@
                         <path d="M12 18h.01" />
                         <path d="M16 18h.01" />
                     </svg>
-                    <span class="text-sm font-medium whitespace-nowrap" x-show="sidebarOpen" x-transition>Event</span>
+                    <span class="text-sm font-medium whitespace-nowrap leading-none" x-show="sidebarOpen" x-transition>Event</span>
+                    @if(isset($vendorEventsBadgeCount) && $vendorEventsBadgeCount > 0)
+                        <span class="ml-auto inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1 text-xs font-bold text-white bg-red-600 rounded-full" x-show="sidebarOpen" x-transition>
+                            {{ $vendorEventsBadgeCount }}
+                        </span>
+                    @endif
                 </a>
                 @endcan
                 @endif
@@ -454,8 +493,19 @@
             @endhasrole
 
             {{-- Settings for Owner --}}
-            @if(auth()->user()->hasRole('Super User') || auth()->user()->hasRole('Owner'))
+            @if(auth()->user()->hasRole('SuperUser') || auth()->user()->hasRole('Owner'))
             <div class="border-t border-[#E0E0E0] pt-4 mt-4 space-y-2">
+                {{-- Checklist Templates Management --}}
+                @can('manage-checklist-templates')
+                <a href="{{ route('admin.checklist-templates.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] {{ request()->routeIs('admin.checklist-templates.*') ? 'bg-[#012A4A] text-white' : 'text-[#1A1A1A]' }}">
+                    <svg class="w-6 h-6 flex-shrink-0 p-1 rounded {{ request()->routeIs('admin.checklist-templates.*') ? 'bg-[#c1dfeb] text-[#012A4A]' : 'bg-[#012A4A] text-white' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span class="text-sm font-medium whitespace-nowrap" x-show="sidebarOpen" x-transition>Checklist Templates</span>
+                </a>
+                @endcan
+                
                 <a href="{{ route('superuser.settings.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] {{ request()->routeIs('superuser.settings.*') ? 'bg-[#012A4A] text-white' : 'text-[#1A1A1A]' }}">
                     <svg class="w-6 h-6 flex-shrink-0 p-1 rounded {{ request()->routeIs('superuser.settings.*') ? 'bg-[#c1dfeb] text-[#012A4A]' : 'bg-[#012A4A] text-white' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

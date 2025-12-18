@@ -15,6 +15,9 @@ class ClientRequest extends Model
     protected $fillable = [
         'user_id',
         'client_name',
+        'groom_name',
+        'bride_name',
+        'fill_couple_later',
         'client_email',
         'client_phone',
         'event_date',
@@ -26,6 +29,7 @@ class ClientRequest extends Model
         'priority',
         'assigned_to',
         'vendor_id',
+        'event_package_id',
         'request_source',
         'notes',
         'responded_at',
@@ -96,6 +100,14 @@ class ClientRequest extends Model
     }
 
     /**
+     * Get the event package associated with this request
+     */
+    public function eventPackage(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\EventPackage::class, 'event_package_id');
+    }
+
+    /**
      * Check if request has been converted to event
      */
     public function isConverted(): bool
@@ -149,7 +161,7 @@ class ClientRequest extends Model
         return match($this->status) {
             'pending' => 'Pending',
             'on_process' => 'On Process',
-            'done' => 'Done',
+            'done' => 'Confirmed', // Display as "Confirmed" instead of "Done"
             default => ucfirst($this->status),
         };
     }
@@ -168,6 +180,8 @@ class ClientRequest extends Model
             'revision_requested' => 'bg-orange-100 text-orange-800',
             'quotation_sent' => 'bg-cyan-100 text-cyan-800',
             'waiting_approval' => 'bg-amber-100 text-amber-800',
+            'ready_to_confirm' => 'bg-amber-100 text-amber-800 border border-amber-200',
+            'confirmed' => 'bg-emerald-100 text-emerald-800 font-bold',
             'approved' => 'bg-green-100 text-green-800',
             'converted_to_event' => 'bg-emerald-100 text-emerald-800',
             'rejected' => 'bg-red-100 text-red-800',
@@ -192,6 +206,8 @@ class ClientRequest extends Model
             'revision_requested' => 'Revision Requested',
             'quotation_sent' => 'Quotation Sent',
             'waiting_approval' => 'Waiting Approval',
+            'ready_to_confirm' => 'Ready to Confirm',
+            'confirmed' => 'Confirmed',
             'approved' => 'Approved',
             'converted_to_event' => 'Converted to Event',
             'rejected' => 'Rejected',
@@ -225,6 +241,51 @@ class ClientRequest extends Model
     }
 
     /**
+     * Calculate total estimated price based on booking source
+     * Returns null if no price information available
+     */
+    public function getTotalPriceAttribute(): ?float
+    {
+        // Priority 1: If from event package
+        if ($this->eventPackage) {
+            return (float) $this->eventPackage->final_price;
+        }
+        
+        // Priority 2: If has accepted recommendations
+        $acceptedRecommendations = \App\Models\RecommendationItem::whereHas('recommendation', function($q) {
+            $q->where('client_request_id', $this->id);
+        })->where('status', 'accepted')->get();
+        
+        if ($acceptedRecommendations->count() > 0) {
+            return (float) $acceptedRecommendations->sum('min_price');
+        }
+        
+        // Priority 3: Return null (no price data available yet)
+        // Budget is just estimation, not actual price
+        return null;
+    }
+
+    /**
+     * Get price source label for display
+     */
+    public function getPriceSourceAttribute(): string
+    {
+        if ($this->eventPackage) {
+            return 'Dari Paket';
+        }
+        
+        $acceptedRecommendations = \App\Models\RecommendationItem::whereHas('recommendation', function($q) {
+            $q->where('client_request_id', $this->id);
+        })->where('status', 'accepted')->count();
+        
+        if ($acceptedRecommendations > 0) {
+            return 'Estimasi Rekomendasi';
+        }
+        
+        return 'Belum ada harga';
+    }
+
+    /**
      * Check if lead is overdue for contact
      * SLA: Should be contacted within 24 hours
      */
@@ -252,5 +313,130 @@ class ClientRequest extends Model
         }
 
         return $this->last_contacted_at->diffInHours(now()) > 72;
+    }
+
+    /**
+     * Get effective status for client display, syncing detailed_status with main status.
+     * This handles cases where detailed_status wasn't updated by legacy code.
+     */
+    public function getEffectiveStatusAttribute()
+    {
+        // On Process Sync
+        if ($this->status === 'on_process') {
+            // If detailed status is still 'introductory' stages, force it to 'on_process'
+            // But if it's already 'recommendation_sent' or 'approved', keep it.
+            if (in_array($this->detailed_status, ['new', 'pending', 'contacted'])) {
+                return 'on_process';
+            }
+        }
+        
+        // Done Sync
+        if ($this->status === 'done') {
+            if (!in_array($this->detailed_status, ['done', 'completed'])) {
+                return 'done';
+            }
+        }
+
+        return $this->detailed_status;
+    }
+
+    /**
+     * Check if booking is ready to be converted to an event
+     */
+    public function isReadyToConvert(): bool
+    {
+        return $this->hasCompleteData()
+            && in_array($this->detailed_status, ['ready_to_confirm', 'approved']);
+    }
+
+    /**
+     * Check if all required data is present
+     */
+    public function hasCompleteData(): bool
+    {
+        return $this->hasPackageOrVendor() 
+            && $this->hasEventDate()
+            && $this->hasCompleteClientDetails();
+    }
+
+    /**
+     * Check if booking has package or vendor assigned
+     */
+    public function hasPackageOrVendor(): bool
+    {
+        return $this->event_package_id !== null 
+            || $this->vendor_id !== null
+            || $this->recommendations()->where('status', 'accepted')->exists()
+            || \App\Models\RecommendationItem::whereHas('recommendation', function($q) {
+                $q->where('client_request_id', $this->id);
+            })->where('status', 'accepted')->exists();
+    }
+
+    /**
+     * Check if event date is set
+     */
+    public function hasEventDate(): bool
+    {
+        return $this->event_date !== null;
+    }
+
+    /**
+     * Check if client details are complete
+     */
+    public function hasCompleteClientDetails(): bool
+    {
+        $hasBasicInfo = !empty($this->client_name) 
+            && !empty($this->client_email) 
+            && !empty($this->client_phone);
+
+        // For wedding events, check couple names unless fill_later is set
+        if ($this->event_type === 'Wedding' && !$this->fill_couple_later) {
+            return $hasBasicInfo 
+                && !empty($this->groom_name) 
+                && !empty($this->bride_name);
+        }
+
+        return $hasBasicInfo;
+    }
+
+    /**
+     * Get readiness checklist for event conversion
+     */
+    public function getReadinessChecklist(): array
+    {
+        return [
+            'package_or_vendor' => [
+                'label' => 'Paket atau Vendor Dipilih',
+                'completed' => $this->hasPackageOrVendor(),
+                'description' => 'Client harus memilih paket, vendor, atau menyetujui rekomendasi'
+            ],
+            'event_date' => [
+                'label' => 'Tanggal Event',
+                'completed' => $this->hasEventDate(),
+                'description' => 'Tanggal pelaksanaan event harus sudah ditentukan'
+            ],
+            'client_details' => [
+                'label' => 'Data Client Lengkap',
+                'completed' => $this->hasCompleteClientDetails(),
+                'description' => 'Nama, email, telepon (dan nama pasangan untuk wedding)'
+            ],
+            'budget_set' => [
+                'label' => 'Budget Ditentukan',
+                'completed' => $this->budget > 0,
+                'description' => 'Budget minimal untuk event sudah ditentukan'
+            ],
+        ];
+    }
+
+    /**
+     * Get percentage of checklist completion
+     */
+    public function getReadinessPercentage(): int
+    {
+        $checklist = $this->getReadinessChecklist();
+        $completed = collect($checklist)->where('completed', true)->count();
+        $total = count($checklist);
+        
+        return $total > 0 ? round(($completed / $total) * 100) : 0;
     }
 }
