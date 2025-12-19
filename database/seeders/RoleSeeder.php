@@ -34,6 +34,7 @@ class RoleSeeder extends Seeder
                 'username' => 'owner',
                 'password' => Hash::make('owner123'),
                 'role' => 'Owner',
+                'email_verified_at' => now(),
             ]
         );
         $owner->assignRole('Owner');

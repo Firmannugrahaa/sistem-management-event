@@ -24,6 +24,7 @@ class UserIndonesianSeeder extends Seeder
                 'email' => 'owner@event.com',
                 'password' => Hash::make('owner123'),
                 'role' => 'Owner',
+                'email_verified_at' => now(),
             ]);
             $owner->assignRole('Owner');
         }

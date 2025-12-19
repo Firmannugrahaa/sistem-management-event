@@ -54,7 +54,8 @@ class AuthServiceProvider extends ServiceProvider
                 return true;
             }
             // Check if user has the specific access-settings permission
-            return $user->can('access-settings');
+            // Use hasPermissionTo to avoid infinite recursion with the gate itself
+            return $user->hasPermissionTo('access-settings');
         });
         
         // Define gate for managing checklist templates
@@ -64,7 +65,8 @@ class AuthServiceProvider extends ServiceProvider
                 return true;
             }
             // Check for specific permission (can be assigned to Owner/Admin via permission matrix)
-            return $user->can('manage-checklist-templates');
+            // Use hasPermissionTo to avoid infinite recursion with the gate itself
+            return $user->hasPermissionTo('manage-checklist-templates');
         });
     }
 }
