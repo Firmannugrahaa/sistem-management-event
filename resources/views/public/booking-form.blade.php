@@ -5,19 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Booking Event - {{ config('app.name') }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-    <div class="py-12">
+    <div class="py-12" x-data="bookingWizard()">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Header -->
             <div class="text-center mb-8">
                 <h1 class="text-4xl font-bold text-gray-900 mb-2">Book Your Event</h1>
                 @if(isset($package))
                     <p class="text-lg text-blue-600 font-semibold">Booking Paket: {{ $package->name }}</p>
-                    <p class="text-sm text-gray-600 mt-1">Isi form di bawah untuk melanjutkan booking paket pilihan Anda</p>
+                    <p class="text-sm text-gray-600 mt-1">Ikuti langkah-langkah di bawah untuk menyelesaikan booking</p>
                 @else
-                    <p class="text-lg text-gray-600">Isi form di bawah untuk memulai perencanaan event Anda</p>
+                    <p class="text-lg text-gray-600">Ikuti langkah-langkah di bawah untuk memulai perencanaan event Anda</p>
                 @endif
             </div>
 
@@ -47,71 +49,45 @@
                             </div>
                         </div>
                     </div>
-                    
-                    @if($package->items && $package->items->count() > 0)
-                        <div class="mt-4 pt-4 border-t border-blue-100">
-                            <p class="text-sm font-semibold text-gray-700 mb-2">Yang Anda Dapatkan:</p>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                @foreach($package->items->take(6) as $item)
-                                    <div class="flex items-center gap-2 text-sm text-gray-600">
-                                        <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                        <span>{{ $item->item_name }}</span>
-                                        @if($item->quantity > 1)
-                                            <span class="text-xs text-gray-400">({{ $item->quantity }}x)</span>
-                                        @endif
-                                    </div>
-                                @endforeach
-                                @if($package->items->count() > 6)
-                                    <div class="text-sm text-blue-600 font-medium">
-                                        +{{ $package->items->count() - 6 }} item lainnya
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    @endif
-                    
-                    <input type="hidden" name="package_id" value="{{ $package->id }}">
                 </div>
             @endif
 
             <!-- Main Card -->
             <div class="bg-white rounded-2xl shadow-xl p-8">
-                <!-- Progress Step Indicators -->
+                <!-- Stepper Header -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between">
-                        <div class="flex flex-col items-center flex-1">
-                            <div class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">1</div>
-                            <p class="text-xs mt-2 font-medium text-blue-600">
-                                @if(isset($user))
-                                    Form Details
-                                @else
-                                    Login/Register
-                                @endif
-                            </p>
-                        </div>
-                        <div class="flex-1 h-1 bg-gray-200 mx-2"></div>
-                        <div class="flex flex-col items-center flex-1">
-                            <div class="w-10 h-10 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center font-semibold">2</div>
-                            <p class="text-xs mt-2 font-medium text-gray-500">
-                                @if(isset($user))
-                                    Review Booking
-                                @else
-                                    Form Details
-                                @endif
-                            </p>
-                        </div>
-                        <div class="flex-1 h-1 bg-gray-200 mx-2"></div>
-                        <div class="flex flex-col items-center flex-1">
-                            <div class="w-10 h-10 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center font-semibold">3</div>
-                            <p class="text-xs mt-2 font-medium text-gray-500">Submit</p>
-                        </div>
-                        <div class="flex-1 h-1 bg-gray-200 mx-2"></div>
-                        <div class="flex flex-col items-center flex-1">
-                            <div class="w-10 h-10 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center font-semibold">4</div>
-                            <p class="text-xs mt-2 font-medium text-gray-500">Confirmed</p>
-                        </div>
+                        <template x-for="(step, index) in steps" :key="index">
+                            <div class="flex items-center" :class="{ 'flex-1': index < steps.length - 1 }">
+                                <div class="flex flex-col items-center">
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300"
+                                         :class="{
+                                             'bg-blue-600 text-white': currentStep > index + 1,
+                                             'bg-blue-600 text-white ring-4 ring-blue-200': currentStep === index + 1,
+                                             'bg-gray-200 text-gray-500': currentStep < index + 1
+                                         }">
+                                        <template x-if="currentStep > index + 1">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                        </template>
+                                        <span x-show="currentStep <= index + 1" x-text="index + 1"></span>
+                                    </div>
+                                    <p class="text-xs mt-2 font-medium transition-colors duration-300 text-center"
+                                       :class="{
+                                           'text-blue-600': currentStep >= index + 1,
+                                           'text-gray-500': currentStep < index + 1
+                                       }"
+                                       x-text="step.name"></p>
+                                </div>
+                                <div x-show="index < steps.length - 1" 
+                                     class="flex-1 h-1 mx-4 rounded transition-colors duration-300"
+                                     :class="{
+                                         'bg-blue-600': currentStep > index + 1,
+                                         'bg-gray-200': currentStep <= index + 1
+                                     }"></div>
+                            </div>
+                        </template>
                     </div>
                 </div>
 
@@ -134,356 +110,492 @@
                     </div>
                 @endif
 
-                <form action="{{ route('public.booking.store') }}" method="POST" class="space-y-6">
-                    @csrf
+                <!-- STEP 1: Form Details -->
+                <div x-show="currentStep === 1" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
+                    <form @submit.prevent="validateStep1()">
+                        @csrf
+                        @if(isset($package))
+                            <input type="hidden" name="package_id" x-model="formData.package_id">
+                        @endif
 
-                    <!-- Personal Information Section -->
-                    <div class="border-b border-gray-200 pb-6">
-                        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                            <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                            </svg>
-                            Informasi Pribadi
-                        </h2>
+                        <!-- Personal Information Section -->
+                        <div class="border-b border-gray-200 pb-6 mb-6">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                                Informasi Pribadi
+                            </h2>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label for="client_name" class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap *</label>
-                                <input type="text" name="client_name" id="client_name" 
-                                    value="{{ old('client_name', $user->name ?? '') }}" required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('client_name') border-red-500 @enderror"
-                                    placeholder="Masukkan nama lengkap Anda"
-                                    @if(isset($user) && $user) readonly @endif>
-                                @if(isset($user) && $user)
-                                    <p class="mt-1 text-xs text-gray-500">Data diambil dari akun Anda</p>
-                                @endif
-                                @error('client_name')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="client_name" class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap *</label>
+                                    <input type="text" name="client_name" id="client_name" 
+                                        x-model="formData.client_name"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        :class="{ 'border-red-500': errors.client_name }"
+                                        placeholder="Masukkan nama lengkap Anda"
+                                        @if(isset($user)) readonly @endif>
+                                    <p x-show="errors.client_name" x-text="errors.client_name" class="mt-2 text-sm text-red-600"></p>
+                                </div>
 
-                            <div>
-                                <label for="client_email" class="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                                <input type="email" name="client_email" id="client_email" 
-                                    value="{{ old('client_email', $user->email ?? '') }}" required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('client_email') border-red-500 @enderror"
-                                    placeholder="email@example.com"
-                                    @if(isset($user) && $user) readonly @endif>
-                                @if(isset($user) && $user)
-                                    <p class="mt-1 text-xs text-gray-500">Data diambil dari akun Anda</p>
-                                @endif
-                                @error('client_email')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
+                                <div>
+                                    <label for="client_email" class="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                                    <input type="email" name="client_email" id="client_email" 
+                                        x-model="formData.client_email"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        :class="{ 'border-red-500': errors.client_email }"
+                                        placeholder="email@example.com"
+                                        @if(isset($user)) readonly @endif>
+                                    <p x-show="errors.client_email" x-text="errors.client_email" class="mt-2 text-sm text-red-600"></p>
+                                </div>
 
-                            <div class="md:col-span-2">
-                                <label for="client_phone" class="block text-sm font-medium text-gray-700 mb-2">No. WhatsApp/Telepon *</label>
-                                <input type="tel" name="client_phone" id="client_phone" 
-                                    value="{{ old('client_phone', $user->phone_number ?? '') }}" required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('client_phone') border-red-500 @enderror"
-                                    placeholder="08xxxxxxxxxx">
-                                @error('client_phone')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                                <div class="md:col-span-2">
+                                    <label for="client_phone" class="block text-sm font-medium text-gray-700 mb-2">No. WhatsApp/Telepon *</label>
+                                    <input type="tel" name="client_phone" id="client_phone" 
+                                        x-model="formData.client_phone"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        :class="{ 'border-red-500': errors.client_phone }"
+                                        placeholder="08xxxxxxxxxx">
+                                    <p x-show="errors.client_phone" x-text="errors.client_phone" class="mt-2 text-sm text-red-600"></p>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Event Information Section -->
-                    <div class="border-b border-gray-200 pb-6">
-                        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                            <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                            </svg>
-                            Detail Event
-                        </h2>
+                        <!-- Event Information Section -->
+                        <div class="border-b border-gray-200 pb-6 mb-6">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                Detail Event
+                            </h2>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label for="event_type" class="block text-sm font-medium text-gray-700 mb-2">Tipe Event *</label>
-                                <select name="event_type" id="event_type" required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('event_type') border-red-500 @enderror"
-                                    @if(isset($package) && $package->event_type) readonly @endif>
-                                    <option value="">Pilih Tipe Event</option>
-                                    <option value="Wedding" {{ (isset($package) && $package->event_type == 'Wedding') || old('event_type') == 'Wedding' ? 'selected' : '' }}>Pernikahan</option>
-                                    <option value="Prewedding" {{ (isset($package) && $package->event_type == 'Prewedding') || old('event_type') == 'Prewedding' ? 'selected' : '' }}>Prewedding</option>
-                                    <option value="Birthday" {{ (isset($package) && $package->event_type == 'Birthday') || old('event_type') == 'Birthday' ? 'selected' : '' }}>Ulang Tahun</option>
-                                    <option value="Corporate" {{ (isset($package) && $package->event_type == 'Corporate') || old('event_type') == 'Corporate' ? 'selected' : '' }}>Corporate Event</option>
-                                    <option value="Conference" {{ (isset($package) && $package->event_type == 'Conference') || old('event_type') == 'Conference' ? 'selected' : '' }}>Conference/Seminar</option>
-                                    <option value="Engagement" {{ (isset($package) && $package->event_type == 'Engagement') || old('event_type') == 'Engagement' ? 'selected' : '' }}>Tunangan</option>
-                                    <option value="Other" {{ (isset($package) && $package->event_type == 'Other') || old('event_type') == 'Other' ? 'selected' : '' }}>Lainnya</option>
-                                </select>
-                                @if(isset($package) && $package->event_type)
-                                    <p class="mt-1 text-xs text-blue-600">
-                                        <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        Tipe event otomatis dipilih sesuai kategori paket
-                                    </p>
-                                @endif
-                                @error('event_type')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div>
-                                <label for="event_date" class="block text-sm font-medium text-gray-700 mb-2">Tanggal Event *</label>
-                                <input type="date" name="event_date" id="event_date" value="{{ old('event_date') }}" required 
-                                    min="{{ date('Y-m-d', strtotime('+1 day')) }}"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('event_date') border-red-500 @enderror">
-                                @error('event_date')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div>
-                                <label for="budget" class="block text-sm font-medium text-gray-700 mb-2">Budget (Opsional)</label>
-                                <div class="relative">
-                                    <span class="absolute left-4 top-3.5 text-gray-500 font-medium">Rp</span>
-                                    <input type="number" name="budget" id="budget" value="{{ old('budget') }}" min="0" step="100000"
-                                        class="w-full pl-14 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('budget') border-red-500 @enderror"
-                                        placeholder="5000000">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="event_type" class="block text-sm font-medium text-gray-700 mb-2">Tipe Event *</label>
+                                    <select name="event_type" id="event_type" x-model="formData.event_type"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        :class="{ 'border-red-500': errors.event_type }">
+                                        <option value="">Pilih Tipe Event</option>
+                                        <option value="Wedding">Pernikahan</option>
+                                        <option value="Prewedding">Prewedding</option>
+                                        <option value="Birthday">Ulang Tahun</option>
+                                        <option value="Corporate">Corporate Event</option>
+                                        <option value="Conference">Conference/Seminar</option>
+                                        <option value="Engagement">Tunangan</option>
+                                        <option value="Other">Lainnya</option>
+                                    </select>
+                                    <p x-show="errors.event_type" x-text="errors.event_type" class="mt-2 text-sm text-red-600"></p>
                                 </div>
-                                <p class="mt-1 text-xs text-gray-500">Estimasi budget untuk event Anda</p>
-                                @error('budget')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+
+                                <div>
+                                    <label for="event_date" class="block text-sm font-medium text-gray-700 mb-2">Tanggal Event *</label>
+                                    <input type="date" name="event_date" id="event_date" 
+                                        x-model="formData.event_date"
+                                        :min="minDate"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        :class="{ 'border-red-500': errors.event_date }">
+                                    <p class="mt-1 text-xs text-gray-500">Pilih tanggal minimal H+1 dari hari ini</p>
+                                    <p x-show="errors.event_date" x-text="errors.event_date" class="mt-2 text-sm text-red-600"></p>
+                                </div>
+
+                                <div>
+                                    <label for="budget" class="block text-sm font-medium text-gray-700 mb-2">Budget (Opsional)</label>
+                                    <div class="relative">
+                                        <span class="absolute left-4 top-3.5 text-gray-500 font-medium">Rp</span>
+                                        <input type="number" name="budget" id="budget" x-model="formData.budget" min="0" step="100000"
+                                            class="w-full pl-14 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="5000000">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label for="message" class="block text-sm font-medium text-gray-700 mb-2">Pesan/Catatan</label>
+                                    <textarea name="message" id="message" rows="3" x-model="formData.message"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Detail kebutuhan event Anda..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Wedding Couple Section (Show only for Wedding events) -->
+                        <div x-show="formData.event_type === 'Wedding' || formData.event_type === 'Engagement'" 
+                             x-transition
+                             class="border-b border-gray-200 pb-6 mb-6">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                                </svg>
+                                Data Calon Pengantin
+                            </h2>
+
+                            <div class="bg-pink-50 rounded-lg p-4 mb-4">
+                                <label class="flex items-center gap-3 cursor-pointer">
+                                    <input type="checkbox" x-model="formData.fill_couple_later" 
+                                           class="w-5 h-5 rounded border-gray-300 text-pink-500 focus:ring-pink-500">
+                                    <span class="text-sm text-gray-700">
+                                        <strong>Isi Nanti</strong> - Saya akan melengkapi data pasangan dari dashboard sebelum hari-H
+                                    </span>
+                                </label>
                             </div>
 
-                            <div class="md:col-span-2">
-                                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            <div x-show="!formData.fill_couple_later" x-transition class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="cpp_name" class="block text-sm font-medium text-gray-700 mb-2">Nama Calon Pengantin Pria</label>
+                                    <input type="text" name="cpp_name" id="cpp_name" x-model="formData.cpp_name"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                        placeholder="Nama lengkap CPP">
+                                </div>
+                                <div>
+                                    <label for="cpw_name" class="block text-sm font-medium text-gray-700 mb-2">Nama Calon Pengantin Wanita</label>
+                                    <input type="text" name="cpw_name" id="cpw_name" x-model="formData.cpw_name"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                        placeholder="Nama lengkap CPW">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vendor Selection (if applicable) -->
+                        @if(isset($serviceTypes) && $serviceTypes->count() > 0)
+                        <div class="border-b border-gray-200 pb-6 mb-6">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                                Pilih Vendor Per Kategori
+                            </h2>
+                            <p class="text-sm text-gray-600 mb-4">
+                                @if(isset($package))
+                                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">Mode Paket</span>
+                                    Vendor sudah dipilih sesuai paket. Anda bisa mengubahnya jika diperlukan.
+                                @else
+                                    <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">Mode Custom</span>
+                                    Pilih vendor sesuai kebutuhan Anda untuk setiap kategori.
+                                @endif
+                            </p>
+                            <p class="text-xs text-gray-500 mb-4">Pilihan vendor akan ditampilkan di halaman Review Booking.</p>
+                        </div>
+                        @endif
+                    </form>
+                </div>
+
+                <!-- STEP 2: Review Booking -->
+                <div x-show="currentStep === 2" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
+                    <div class="space-y-6">
+                        <div class="bg-gray-50 rounded-xl p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-gray-900">Ringkasan Booking</h3>
+                                <button @click="currentStep = 1" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                                     </svg>
-                                    Pilih Vendor Per Kategori
-                                </h3>
-                                <p class="text-sm text-gray-600 mb-4">
-                                    @if(isset($package))
-                                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">Mode Paket</span>
-                                        Vendor sudah dipilih sesuai paket. Anda bisa mengubahnya jika diperlukan.
-                                    @else
-                                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">Mode Custom</span>
-                                        Pilih vendor sesuai kebutuhan Anda untuk setiap kategori.
-                                    @endif
-                                </p>
+                                    Edit
+                                </button>
+                            </div>
 
-                                <div x-data="vendorSelection()" class="space-y-4">
-                                    @foreach($serviceTypes as $serviceType)
-                                        @if($serviceType->vendors && $serviceType->vendors->count() > 0)
-                                            <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition">
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                    {{ $serviceType->name }} 
-                                                    @if(isset($packageVendors[$serviceType->id]))
-                                                        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Dari Paket</span>
-                                                    @endif
-                                                </label>
-                                                
-                                                <select 
-                                                    name="vendors[{{ $serviceType->id }}][vendor_id]" 
-                                                    x-model="selectedVendors['{{ $serviceType->id }}']"
-                                                    @change="handleVendorChange('{{ $serviceType->id }}')"
-                                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                                    <option value="">Pilih {{ $serviceType->name }} (Opsional)</option>
-                                                    @foreach($serviceType->vendors as $vendor)
-                                                        <option value="{{ $vendor->id }}" 
-                                                            {{ isset($packageVendors[$serviceType->id]) && $packageVendors[$serviceType->id] == $vendor->id ? 'selected' : '' }}>
-                                                            {{ $vendor->brand_name ?? $vendor->name }}
-                                                        </option>
-                                                    @endforeach
-                                                    <option value="non-partner">🔹 Vendor Non Rekanan (Vendor Luar)</option>
-                                                </select>
-                                                
-                                                <!-- Non-Partner Vendor Form (shown when 'non-partner' is selected) -->
-                                                <div x-show="selectedVendors['{{ $serviceType->id }}'] === 'non-partner'" 
-                                                     x-transition
-                                                     class="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
-                                                    
-                                                    <div class="flex items-start gap-2 mb-3">
-                                                        <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                                        </svg>
-                                                        <p class="text-sm text-yellow-800">
-                                                            <strong>Catatan:</strong> 
-                                                            @php
-                                                                $charge = $nonPartnerCharges[$serviceType->name] ?? $nonPartnerCharges['default'];
-                                                            @endphp
-                                                            @if($charge > 0)
-                                                                Akan dikenakan biaya tambahan <strong class="text-yellow-900">Rp {{ number_format($charge, 0, ',', '.') }}</strong> untuk vendor non rekanan.
-                                                            @else
-                                                                Tidak ada biaya tambahan untuk kategori ini.
-                                                            @endif
-                                                        </p>
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nama Vendor <span class="text-red-500">*</span></label>
-                                                        <input type="text" 
-                                                            name="vendors[{{ $serviceType->id }}][non_partner_name]"
-                                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                            placeholder="Contoh: Vendor {{ $serviceType->name }} ABC"
-                                                            x-bind:required="selectedVendors['{{ $serviceType->id }}'] === 'non-partner'">
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Kontak Vendor <span class="text-red-500">*</span></label>
-                                                        <input type="text" 
-                                                            name="vendors[{{ $serviceType->id }}][non_partner_contact]"
-                                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                            placeholder="No. Telepon atau Email"
-                                                            x-bind:required="selectedVendors['{{ $serviceType->id }}'] === 'non-partner'">
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
-                                                        <textarea 
-                                                            name="vendors[{{ $serviceType->id }}][non_partner_notes]"
-                                                            rows="2"
-                                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                            placeholder="Detail atau kebutuhan khusus..."></textarea>
-                                                    </div>
-                                                    
-                                                    <input type="hidden" 
-                                                        name="vendors[{{ $serviceType->id }}][non_partner_charge]" 
-                                                        value="{{ $charge }}">
-                                                </div>
-                                            </div>
-                                        @endif
-                                    @endforeach
-                                    
-                                    <script>
-                                        function vendorSelection() {
-                                            return {
-                                                selectedVendors: {
-                                                    @foreach($serviceTypes as $serviceType)
-                                                        @if(isset($packageVendors[$serviceType->id]))
-                                                            '{{ $serviceType->id }}': '{{ $packageVendors[$serviceType->id] }}',
-                                                        @else
-                                                            '{{ $serviceType->id }}': '',
-                                                        @endif
-                                                    @endforeach
-                                                },
-                                                handleVendorChange(serviceTypeId) {
-                                                    // Can add additional logic here if needed
-                                                    console.log('Vendor changed for service type:', serviceTypeId);
-                                                }
-                                            }
-                                        }
-                                    </script>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-white p-4 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Nama</p>
+                                    <p class="font-medium" x-text="formData.client_name"></p>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Email</p>
+                                    <p class="font-medium" x-text="formData.client_email"></p>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">No. Telepon</p>
+                                    <p class="font-medium" x-text="formData.client_phone"></p>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Tipe Event</p>
+                                    <p class="font-medium" x-text="formData.event_type"></p>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Tanggal Event</p>
+                                    <p class="font-medium" x-text="formatDate(formData.event_date)"></p>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Budget</p>
+                                    <p class="font-medium" x-text="formData.budget ? 'Rp ' + Number(formData.budget).toLocaleString('id-ID') : 'Tidak ditentukan'"></p>
                                 </div>
                             </div>
 
-                            <div class="md:col-span-2">
-                                <label for="message" class="block text-sm font-medium text-gray-700 mb-2">Pesan / Detail Kebutuhan</label>
-                                <textarea name="message" id="message" rows="4"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('message') border-red-500 @enderror"
-                                    placeholder="Ceritakan detail kebutuhan event Anda...">{{ old('message') }}</textarea>
-                                @error('message')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                            <!-- Wedding Couple Info -->
+                            <div x-show="formData.event_type === 'Wedding' || formData.event_type === 'Engagement'" class="mt-4">
+                                <div class="bg-pink-50 p-4 rounded-lg">
+                                    <p class="text-xs text-pink-600 font-medium mb-2">Data Calon Pengantin</p>
+                                    <template x-if="formData.fill_couple_later">
+                                        <p class="text-sm text-gray-600 italic">Akan diisi nanti dari dashboard</p>
+                                    </template>
+                                    <template x-if="!formData.fill_couple_later">
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p class="text-xs text-gray-500">CPP</p>
+                                                <p class="font-medium" x-text="formData.cpp_name || '-'"></p>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs text-gray-500">CPW</p>
+                                                <p class="font-medium" x-text="formData.cpw_name || '-'"></p>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Message -->
+                            <div x-show="formData.message" class="mt-4 bg-white p-4 rounded-lg">
+                                <p class="text-xs text-gray-500 mb-1">Pesan/Catatan</p>
+                                <p class="text-sm text-gray-700" x-text="formData.message"></p>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Submit Button -->
-                    <div class="flex items-center justify-between pt-4">
-                        <a href="{{ route('landing.page') }}" class="text-gray-600 hover:text-gray-900 font-medium">
-                            ← Kembali ke Home
-                        </a>
-                        <button type="submit" class="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition transform hover:scale-105">
-                            @if(isset($user))
-                                Submit Booking Request
-                            @else
-                                Lanjutkan ke Registrasi
-                            @endif
-                            <svg class="w-5 h-5 inline-block ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                        @if(isset($package))
+                        <div class="bg-blue-50 rounded-xl p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Paket yang Dipilih</h3>
+                            <div class="flex items-start gap-4">
+                                @if($package->thumbnail_path)
+                                    <img src="{{ asset('storage/' . $package->thumbnail_path) }}" class="w-20 h-20 object-cover rounded-lg">
+                                @endif
+                                <div>
+                                    <p class="font-bold text-gray-900">{{ $package->name }}</p>
+                                    <p class="text-2xl font-bold text-blue-600 mt-1">Rp {{ number_format($package->final_price, 0, ',', '.') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- STEP 3: Submit (Loading) -->
+                <div x-show="currentStep === 3" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
+                    <div class="text-center py-12">
+                        <div class="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mb-6"></div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Memproses Booking Anda...</h3>
+                        <p class="text-gray-600">Mohon tunggu sebentar, jangan tutup halaman ini.</p>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Confirmed -->
+                <div x-show="currentStep === 4" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+                    <div class="text-center py-8">
+                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                             </svg>
-                        </button>
-                    </div>
-                </form>
-            </div>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Booking Berhasil!</h3>
+                        <p class="text-gray-600 mb-6">Terima kasih, booking Anda telah kami terima.</p>
+                        
+                        <div class="bg-gray-50 rounded-xl p-6 max-w-md mx-auto mb-8">
+                            <p class="text-sm text-gray-500 mb-2">Nomor Booking Anda</p>
+                            <p class="text-2xl font-bold text-blue-600" x-text="bookingNumber"></p>
+                            <p class="text-xs text-gray-500 mt-4">Simpan nomor ini untuk referensi. Tim kami akan segera menghubungi Anda.</p>
+                        </div>
 
-            <!-- Info Box -->
-            <div class="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6">
-                <div class="flex">
-                    <svg class="w-6 h-6 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <div class="ml-3">
-                        <h3 class="text-sm font-medium text-blue-900">Proses Booking</h3>
-                        <div class="mt-2 text-sm text-blue-700">
-                            @if(isset($user))
-                                <ul class="list-disc pl-5 space-y-1">
-                                    <li>Isi form booking dengan lengkap</li>
-                                    <li>Review detail booking Anda</li>
-                                    <li>Submit booking request</li>
-                                    <li>Tim kami akan segera memproses dan menghubungi Anda</li>
-                                </ul>
-                            @else
-                                <ul class="list-disc pl-5 space-y-1">
-                                    <li>Login atau daftar akun terlebih dahulu</li>
-                                    <li>Isi form booking dengan lengkap</li>
-                                    <li>Submit booking request</li>
-                                    <li>Tim kami akan segera memproses dan menghubungi Anda</li>
-                                </ul>
-                            @endif
+                        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                            <a href="{{ route('client.dashboard') }}" class="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">
+                                Lihat Booking Saya
+                            </a>
+                            <a href="{{ route('landing.page') }}" class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition">
+                                Kembali ke Home
+                            </a>
                         </div>
                     </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div x-show="currentStep < 3" class="flex items-center justify-between pt-6 mt-6 border-t border-gray-200">
+                    <button x-show="currentStep > 1" @click="prevStep()" type="button"
+                        class="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        Kembali
+                    </button>
+                    <a x-show="currentStep === 1" href="{{ route('landing.page') }}" class="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium">
+                        ← Kembali ke Home
+                    </a>
+                    
+                    <button x-show="currentStep === 1" @click="validateStep1()" type="button"
+                        class="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center">
+                        Lanjut ke Review
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                    
+                    <button x-show="currentStep === 2" @click="submitBooking()" type="button"
+                        class="px-8 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Submit Booking
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
+    <script>
+        function bookingWizard() {
+            return {
+                currentStep: 1,
+                bookingNumber: '',
+                minDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
+                steps: [
+                    { name: 'Form Details' },
+                    { name: 'Review Booking' },
+                    { name: 'Submit' },
+                    { name: 'Confirmed' }
+                ],
+                formData: {
+                    package_id: '{{ $package->id ?? '' }}',
+                    client_name: '{{ $user->name ?? old('client_name', '') }}',
+                    client_email: '{{ $user->email ?? old('client_email', '') }}',
+                    client_phone: '{{ $user->phone_number ?? old('client_phone', '') }}',
+                    event_type: '{{ (isset($package) && $package->event_type) ? $package->event_type : old('event_type', '') }}',
+                    event_date: '{{ old('event_date', '') }}',
+                    budget: '{{ old('budget', '') }}',
+                    message: '{{ old('message', '') }}',
+                    cpp_name: '',
+                    cpw_name: '',
+                    fill_couple_later: false
+                },
+                errors: {},
+                
+                validateStep1() {
+                    this.errors = {};
+                    let isValid = true;
+
+                    if (!this.formData.client_name.trim()) {
+                        this.errors.client_name = 'Nama lengkap wajib diisi';
+                        isValid = false;
+                    }
+                    if (!this.formData.client_email.trim()) {
+                        this.errors.client_email = 'Email wajib diisi';
+                        isValid = false;
+                    } else if (!this.isValidEmail(this.formData.client_email)) {
+                        this.errors.client_email = 'Format email tidak valid';
+                        isValid = false;
+                    }
+                    if (!this.formData.client_phone.trim()) {
+                        this.errors.client_phone = 'No. telepon wajib diisi';
+                        isValid = false;
+                    }
+                    if (!this.formData.event_type) {
+                        this.errors.event_type = 'Tipe event wajib dipilih';
+                        isValid = false;
+                    }
+                    if (!this.formData.event_date) {
+                        this.errors.event_date = 'Tanggal event wajib diisi';
+                        isValid = false;
+                    } else if (new Date(this.formData.event_date) <= new Date()) {
+                        this.errors.event_date = 'Tanggal harus lebih dari hari ini';
+                        isValid = false;
+                    }
+
+                    if (isValid) {
+                        this.currentStep = 2;
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                },
+
+                prevStep() {
+                    if (this.currentStep > 1) {
+                        this.currentStep--;
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                },
+
+                async submitBooking() {
+                    this.currentStep = 3;
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                    try {
+                        const response = await fetch('{{ route('public.booking.store.ajax') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(this.formData)
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.bookingNumber = data.booking_number;
+                            this.currentStep = 4;
+                        } else {
+                            this.currentStep = 2;
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops!',
+                                text: data.message || 'Terjadi kesalahan. Silakan coba lagi.',
+                            });
+                        }
+                    } catch (error) {
+                        this.currentStep = 2;
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Terjadi kesalahan jaringan. Silakan coba lagi.',
+                        });
+                    }
+                },
+
+                isValidEmail(email) {
+                    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+                },
+
+                formatDate(dateString) {
+                    if (!dateString) return '-';
+                    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                    return new Date(dateString).toLocaleDateString('id-ID', options);
+                }
+            }
+        }
+    </script>
+
     {{-- SweetAlert for Duplicate Booking Check --}}
     @if(session('booking_check'))
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 @if(session('booking_check') === 'same_package')
-                    // User has existing booking for the same package
                     Swal.fire({
                         title: 'Paket Sudah Dipesan',
-                        html: "Anda sudah memiliki booking untuk paket <strong>{{ session('package_name') }}</strong>.<br>Apakah ingin membuat booking baru untuk tanggal berbeda?",
-                        icon: 'warning',
-                        showDenyButton: true,
+                        html: 'Anda sudah memiliki booking untuk paket <strong>{{ session('package_name') }}</strong>.<br><br>Apakah Anda ingin membuat booking baru untuk tanggal berbeda?',
+                        icon: 'question',
                         showCancelButton: true,
+                        showDenyButton: true,
                         confirmButtonText: 'Lanjutkan Booking Baru',
                         denyButtonText: 'Lihat Booking Saya',
                         cancelButtonText: 'Batal',
-                        confirmButtonColor: '#012A4A',
-                        denyButtonColor: '#27AE60',
-                        cancelButtonColor: '#d33',
-                        allowOutsideClick: false
+                        confirmButtonColor: '#3085d6',
+                        denyButtonColor: '#27ae60',
+                        cancelButtonColor: '#d33'
                     }).then((result) => {
-                        if (result.isConfirmed) {
-                            // Continue with booking - do nothing, stay on form
-                        } else if (result.isDenied) {
-                            // Redirect to bookings list
+                        if (result.isDenied) {
                             window.location.href = "{{ route('client.requests.index') }}";
-                        } else {
-                            // Cancel - go back to package detail
-                            window.history.back();
+                        } else if (result.dismiss === Swal.DismissReason.cancel) {
+                            window.location.href = "{{ route('landing.page') }}";
                         }
                     });
                 @elseif(session('booking_check') === 'other_package')
-                    // User has existing booking for other package
                     Swal.fire({
-                        title: 'Booking Lain Terdeteksi',
-                        html: "Anda sudah memiliki booking paket lain.<br>Apakah ingin membuat booking untuk paket <strong>{{ session('package_name') }}</strong> juga?",
-                        icon: 'question',
+                        title: 'Anda Sudah Memiliki Booking',
+                        html: 'Anda sudah memiliki booking aktif untuk event lain.<br><br>Apakah Anda yakin ingin menambah booking baru untuk paket <strong>{{ session('package_name') }}</strong>?',
+                        icon: 'info',
                         showCancelButton: true,
-                        confirmButtonText: 'Lanjutkan',
+                        confirmButtonText: 'Ya, Lanjutkan',
                         cancelButtonText: 'Batal',
-                        confirmButtonColor: '#012A4A',
-                        cancelButtonColor: '#d33',
-                        allowOutsideClick: false
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33'
                     }).then((result) => {
-                        if (result.isConfirmed) {
-                            // Continue with booking - do nothing, stay on form
-                        } else {
-                            // Cancel - go back to package detail
-                            window.history.back();
+                        if (result.dismiss === Swal.DismissReason.cancel) {
+                            window.location.href = "{{ route('landing.page') }}";
                         }
                     });
                 @endif

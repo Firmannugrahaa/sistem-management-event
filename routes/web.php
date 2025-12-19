@@ -28,6 +28,9 @@ Route::get('/book-now', [\App\Http\Controllers\Public\PublicBookingController::c
     ->name('public.booking.form');
 Route::post('/book-now', [\App\Http\Controllers\Public\PublicBookingController::class, 'storeBooking'])
     ->name('public.booking.store');
+Route::post('/book-now/ajax', [\App\Http\Controllers\Public\PublicBookingController::class, 'storeBookingAjax'])
+    ->middleware('auth')
+    ->name('public.booking.store.ajax');
 
 // Public Catalog Item Detail
 Route::get('/catalog/item/{id}', [\App\Http\Controllers\Public\PublicCatalogController::class, 'show'])
@@ -148,9 +151,11 @@ Route::middleware('auth')->group(function () {
     // Client Portal (For Clients/Users)
     Route::middleware('role:Client|User')->prefix('portal')->name('client.')->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\Client\ClientDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/requests', [App\Http\Controllers\Client\ClientDashboardController::class, 'index'])->name('requests.index'); // Alias for booking list
         Route::get('/requests/{clientRequest}', [App\Http\Controllers\Client\ClientDashboardController::class, 'show'])->name('requests.show');
         Route::get('/recommendations/{recommendation}', [App\Http\Controllers\Client\ClientDashboardController::class, 'showRecommendation'])->name('recommendations.show');
         Route::post('/recommendations/{recommendation}/respond', [App\Http\Controllers\Client\ClientDashboardController::class, 'respondRecommendation'])->name('recommendations.respond');
+        Route::post('/recommendation-items/{item}/respond', [App\Http\Controllers\Client\ClientDashboardController::class, 'respondRecommendationItem'])->name('recommendation-items.respond');
     });
 
     // User-facing Invoice History

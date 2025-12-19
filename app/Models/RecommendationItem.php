@@ -17,11 +17,15 @@ class RecommendationItem extends Model
         'category',
         'estimated_price',
         'notes',
-        'order'
+        'order',
+        'client_response',
+        'client_feedback',
+        'responded_at',
     ];
 
     protected $casts = [
         'estimated_price' => 'decimal:2',
+        'responded_at' => 'datetime',
     ];
 
     public function recommendation(): BelongsTo

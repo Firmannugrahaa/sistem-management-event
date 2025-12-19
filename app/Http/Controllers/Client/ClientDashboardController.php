@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\ClientRequest;
 use App\Models\LeadRecommendation;
+use App\Models\RecommendationItem;
 use App\Models\ActivityLog;
+use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,18 +15,114 @@ use Illuminate\Support\Facades\DB;
 class ClientDashboardController extends Controller
 {
     /**
-     * Client Dashboard - List of Requests
+     * Client Dashboard - Main page with functional blocks
      */
     public function index()
     {
-        $requests = ClientRequest::where('user_id', Auth::id())
-            ->with(['recommendations' => function($q) {
-                $q->latest();
-            }])
+        $user = Auth::user();
+        
+        // Get the most recent/active client request with full details
+        $activeRequest = ClientRequest::where('user_id', $user->id)
+            ->whereNotIn('detailed_status', ['cancelled', 'completed'])
+            ->latest()
+            ->with([
+                'recommendations' => function($q) {
+                    $q->where('status', '!=', 'draft')->latest();
+                },
+                'recommendations.items.vendor',
+                'event.invoice.payments',
+                'nonPartnerCharges'
+            ])
+            ->first();
+        
+        // Get all requests for history
+        $allRequests = ClientRequest::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('client.dashboard.index', compact('requests'));
+        // Get pending recommendation items (not yet responded)
+        $pendingItems = collect();
+        $newRecommendationsCount = 0;
+        
+        if ($activeRequest) {
+            $pendingItems = RecommendationItem::whereHas('recommendation', function($q) use ($activeRequest) {
+                $q->where('client_request_id', $activeRequest->id)
+                  ->where('status', 'sent');
+            })
+            ->where('client_response', 'pending')
+            ->with(['vendor', 'recommendation'])
+            ->get();
+            
+            $newRecommendationsCount = $pendingItems->count();
+        }
+
+        // Calculate progress percentage
+        $progressData = $this->calculateProgress($activeRequest);
+        
+        // Invoice summary
+        $invoiceSummary = null;
+        if ($activeRequest && $activeRequest->event && $activeRequest->event->invoice) {
+            $invoice = $activeRequest->event->invoice;
+            $invoiceSummary = [
+                'total' => $invoice->total_amount,
+                'paid' => $invoice->paid_amount ?? 0,
+                'remaining' => $invoice->balance_due ?? $invoice->total_amount,
+                'status' => $invoice->status,
+                'invoice_id' => $invoice->id,
+            ];
+        }
+
+        return view('client.dashboard.index', compact(
+            'activeRequest',
+            'allRequests',
+            'pendingItems',
+            'newRecommendationsCount',
+            'progressData',
+            'invoiceSummary'
+        ));
+    }
+
+    /**
+     * Calculate progress based on detailed_status
+     */
+    private function calculateProgress(?ClientRequest $request): array
+    {
+        if (!$request) {
+            return ['percentage' => 0, 'currentStep' => 0, 'steps' => $this->getProgressSteps()];
+        }
+
+        $steps = $this->getProgressSteps();
+        $statusOrder = [
+            'new' => 1,
+            'pending' => 1,
+            'contacted' => 2,
+            'in_progress' => 2,
+            'recommendation_sent' => 3,
+            'revision_requested' => 3,
+            'approved' => 4,
+            'converted_to_event' => 5,
+            'completed' => 5,
+        ];
+
+        $currentStep = $statusOrder[$request->detailed_status] ?? 1;
+        $percentage = ($currentStep / count($steps)) * 100;
+
+        return [
+            'percentage' => min(100, $percentage),
+            'currentStep' => $currentStep,
+            'steps' => $steps,
+        ];
+    }
+
+    private function getProgressSteps(): array
+    {
+        return [
+            1 => ['name' => 'Booking', 'status' => 'new'],
+            2 => ['name' => 'On Process', 'status' => 'in_progress'],
+            3 => ['name' => 'Rekomendasi', 'status' => 'recommendation_sent'],
+            4 => ['name' => 'Approved', 'status' => 'approved'],
+            5 => ['name' => 'Event Ready', 'status' => 'converted_to_event'],
+        ];
     }
 
     /**
@@ -32,12 +130,11 @@ class ClientDashboardController extends Controller
      */
     public function show(ClientRequest $clientRequest)
     {
-        // Security: Ensure this request belongs to the logged-in user
         if ($clientRequest->user_id !== Auth::id()) {
             abort(403, 'Unauthorized');
         }
 
-        $clientRequest->load(['recommendations.items', 'event']);
+        $clientRequest->load(['recommendations.items.vendor', 'event.invoice']);
 
         return view('client.dashboard.show', compact('clientRequest'));
     }
@@ -47,23 +144,103 @@ class ClientDashboardController extends Controller
      */
     public function showRecommendation(LeadRecommendation $recommendation)
     {
-        // Security check
         if ($recommendation->clientRequest->user_id !== Auth::id()) {
             abort(403, 'Unauthorized');
         }
 
-        // Only allow viewing if sent
         if ($recommendation->status === 'draft') {
             abort(404);
         }
 
-        $recommendation->load(['items', 'creator']);
+        $recommendation->load(['items.vendor', 'creator']);
 
         return view('client.dashboard.recommendation', compact('recommendation'));
     }
 
     /**
-     * Respond to Recommendation (Accept/Reject)
+     * Respond to individual recommendation item (Approve/Reject)
+     */
+    public function respondRecommendationItem(Request $request, RecommendationItem $item)
+    {
+        // Security check
+        if ($item->recommendation->clientRequest->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'action' => 'required|in:approve,reject',
+            'feedback' => 'nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $item->update([
+                'client_response' => $validated['action'] === 'approve' ? 'approved' : 'rejected',
+                'client_feedback' => $validated['feedback'] ?? null,
+                'responded_at' => now(),
+            ]);
+
+            $recommendation = $item->recommendation;
+            $clientRequest = $recommendation->clientRequest;
+
+            // Log activity
+            $vendorName = $item->vendor ? $item->vendor->name : $item->external_vendor_name;
+            ActivityLog::log(
+                'client_item_response',
+                $clientRequest,
+                "Client " . ($validated['action'] === 'approve' ? 'approved' : 'rejected') . " {$item->category}: {$vendorName}",
+                ['price' => $item->estimated_price, 'feedback' => $validated['feedback'] ?? null]
+            );
+
+            // Check if all items in recommendation have been responded
+            $pendingCount = $recommendation->items()->where('client_response', 'pending')->count();
+            $approvedCount = $recommendation->items()->where('client_response', 'approved')->count();
+            $rejectedCount = $recommendation->items()->where('client_response', 'rejected')->count();
+
+            if ($pendingCount === 0) {
+                // All items responded
+                if ($rejectedCount === $recommendation->items()->count()) {
+                    // All rejected
+                    $recommendation->update(['status' => 'rejected', 'responded_at' => now()]);
+                    $clientRequest->update(['detailed_status' => 'rejected']);
+                } elseif ($approvedCount > 0) {
+                    // At least some approved
+                    $recommendation->update(['status' => 'accepted', 'responded_at' => now()]);
+                    $clientRequest->update(['detailed_status' => 'approved']);
+                }
+            }
+
+            DB::commit();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $validated['action'] === 'approve' 
+                        ? 'Rekomendasi berhasil disetujui!'
+                        : 'Rekomendasi ditolak. Admin akan mengirim alternatif.',
+                ]);
+            }
+
+            return back()->with('success', 
+                $validated['action'] === 'approve' 
+                    ? 'Rekomendasi berhasil disetujui!'
+                    : 'Rekomendasi ditolak.'
+            );
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Terjadi kesalahan.'], 500);
+            }
+
+            return back()->with('error', 'Terjadi kesalahan.');
+        }
+    }
+
+    /**
+     * Legacy: Respond to entire Recommendation (Accept/Reject)
      */
     public function respondRecommendation(Request $request, LeadRecommendation $recommendation)
     {
@@ -93,15 +270,12 @@ class ClientDashboardController extends Controller
                 'client_feedback' => $validated['feedback'] ?? null,
             ]);
 
-            // Update Lead Status based on action
             $clientRequest = $recommendation->clientRequest;
             
             if ($newStatus === 'accepted') {
                 $clientRequest->update(['detailed_status' => 'approved']);
-                // Notify Admin: Recommendation Accepted!
             } elseif ($newStatus === 'revision_requested') {
                 $clientRequest->update(['detailed_status' => 'revision_requested']);
-                // Notify Admin: Revision Requested
             } elseif ($newStatus === 'rejected') {
                 $clientRequest->update(['detailed_status' => 'rejected']);
             }
