@@ -46,7 +46,7 @@
                 </div>
                 <div>
                     <!-- Notification Bell -->
-                    <!-- TEMP DISABLED: <x-notification-bell /> -->
+                    <x-notification-bell />
                 </div>
             </div>
         </header>

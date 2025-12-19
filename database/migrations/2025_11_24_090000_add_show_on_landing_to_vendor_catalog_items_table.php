@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('vendor_catalog_items', function (Blueprint $table) {
-            $table->boolean('show_on_landing')->default(false)->after('show_stock');
+            if (!Schema::hasColumn('vendor_catalog_items', 'show_on_landing')) {
+                $table->boolean('show_on_landing')->default(false)->after('show_stock');
+            }
         });
     }
 

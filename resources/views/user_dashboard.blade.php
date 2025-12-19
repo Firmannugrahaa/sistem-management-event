@@ -1,8 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-2xl text-text-primary leading-tight">
-            {{ __('My Dashboard') }}
-        </h2>
+        <div class="flex flex-col gap-2">
+            <h2 class="font-bold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+                {{ __('Dashboard') }}
+            </h2>
+            <x-breadcrumb :items="[['name' => 'Dashboard']]"/>
+        </div>
     </x-slot>
 
     <div class="py-12">
