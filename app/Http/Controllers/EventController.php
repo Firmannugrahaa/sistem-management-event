@@ -177,6 +177,16 @@ class EventController extends Controller
                 }
             }
 
+            // 5. Transfer non-partner vendor charges from ClientRequest to Event
+            if ($clientRequestId) {
+                $clientRequest = ClientRequest::find($clientRequestId);
+                if ($clientRequest && $clientRequest->nonPartnerCharges) {
+                    foreach ($clientRequest->nonPartnerCharges as $charge) {
+                        $charge->update(['event_id' => $event->id]);
+                    }
+                }
+            }
+
             \Illuminate\Support\Facades\DB::commit();
 
             return redirect()->route('events.index')->with('success', 'Event created successfully (Linked to Client Request).');
@@ -347,15 +357,21 @@ class EventController extends Controller
 
         // 1. Hitung total biaya dari pivot table vendor
         // Kita panggil relasi vendors() dan SUM 'agreed_price'
-        $totalAmount = $event->vendors()->sum('agreed_price');
+        $vendorTotal = $event->vendors()->sum('agreed_price');
+        
+        // 2. Hitung biaya non-partner vendor charges
+        $nonPartnerTotal = $event->nonPartnerCharges()->sum('charge_amount');
+        
+        // 3. Total = vendor costs + non-partner charges
+        $totalAmount = $vendorTotal + $nonPartnerTotal;
 
-        // 2. Data untuk Invoice
+        // 4. Data untuk Invoice
         $invoiceData = [
-            'total_amount' => $totalAmount, //
+            'total_amount' => $totalAmount,
             'status' => 'Unpaid' // Set status jadi Unpaid
         ];
 
-        // 3. Cek apakah event ini SUDAH punya invoice?
+        // 5. Cek apakah event ini SUDAH punya invoice?
         if ($event->invoice) {
             // Jika sudah, update saja
             $event->invoice->update($invoiceData);

@@ -21,11 +21,15 @@ class RecommendationItem extends Model
         'status',
         'rejection_reason',
         'notes',
-        'order'
+        'order',
+        'client_response',
+        'client_feedback',
+        'responded_at',
     ];
 
     protected $casts = [
         'estimated_price' => 'decimal:2',
+        'responded_at' => 'datetime',
     ];
 
     public function recommendation(): BelongsTo

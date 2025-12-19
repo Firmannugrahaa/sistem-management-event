@@ -24,6 +24,10 @@ class ClientRequest extends Model
         'budget',
         'event_type',
         'message',
+        'cpp_name',           // Calon Pengantin Pria
+        'cpw_name',           // Calon Pengantin Wanita
+        'fill_couple_later',  // Flag: fill couple names later
+        'booking_number',     // Unique booking reference number
         'status',
         'detailed_status',
         'priority',
@@ -44,6 +48,7 @@ class ClientRequest extends Model
         'responded_at' => 'datetime',
         'last_contacted_at' => 'datetime',
         'follow_up_count' => 'integer',
+        'fill_couple_later' => 'boolean',
     ];
 
     protected $hidden = [
@@ -100,11 +105,19 @@ class ClientRequest extends Model
     }
 
     /**
-     * Get the event package associated with this request
+     * Get non-partner vendor charges for this request
      */
-    public function eventPackage(): BelongsTo
+    public function nonPartnerCharges(): HasMany
     {
-        return $this->belongsTo(\App\Models\EventPackage::class, 'event_package_id');
+        return $this->hasMany(NonPartnerVendorCharge::class);
+    }
+
+    /**
+     * Get total non-partner charges amount
+     */
+    public function getTotalNonPartnerChargesAttribute(): float
+    {
+        return $this->nonPartnerCharges()->sum('charge_amount');
     }
 
     /**

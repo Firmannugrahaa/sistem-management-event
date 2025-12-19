@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\NonPartnerVendorCharge;
+use App\Models\ServiceType;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -18,9 +20,17 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('auth.register');
+        // Preserve return_url in session for persistence across validation failures
+        // Using put() instead of flash() so it persists across multiple requests (validation failures)
+        if ($request->has('return_url')) {
+            session()->put('booking_return_url', $request->return_url);
+        }
+        
+        $returnUrl = $request->return_url ?? session('booking_return_url');
+        
+        return view('auth.register', compact('returnUrl'));
     }
 
     /**
@@ -76,6 +86,28 @@ class RegisteredUserController extends Controller
                 'request_source' => 'public_booking_form',
             ]);
 
+            // Save non-partner vendor charges if any
+            if (isset($pendingBooking['vendors'])) {
+                foreach ($pendingBooking['vendors'] as $serviceTypeId => $vendorData) {
+                    if (isset($vendorData['vendor_id']) && $vendorData['vendor_id'] === 'non-partner') {
+                        $serviceType = ServiceType::find($serviceTypeId);
+                        $serviceTypeName = $serviceType ? $serviceType->name : 'Other';
+                        
+                        if (!empty($vendorData['non_partner_name'])) {
+                            NonPartnerVendorCharge::create([
+                                'client_request_id' => $clientRequest->id,
+                                'event_id' => null,
+                                'service_type' => $serviceTypeName,
+                                'vendor_name' => $vendorData['non_partner_name'],
+                                'vendor_contact' => $vendorData['non_partner_contact'] ?? null,
+                                'notes' => $vendorData['non_partner_notes'] ?? null,
+                                'charge_amount' => $vendorData['non_partner_charge'] ?? 0,
+                            ]);
+                        }
+                    }
+                }
+            }
+
             // Clear the session
             session()->forget('pending_booking');
 
@@ -86,9 +118,12 @@ class RegisteredUserController extends Controller
                 ->with('success', 'Akun berhasil dibuat dan booking Anda telah dikirim!');
         }
 
-        // Check if there is a specific return_url parameter
-        if ($request->has('return_url')) {
-            return redirect($request->return_url)->with('success', 'Selamat datang! Akun Anda berhasil dibuat. Silahkan lanjutkan booking Anda.');
+        // Check if there is a specific return_url parameter (POST field or session)
+        $returnUrl = $request->return_url ?? session('booking_return_url');
+        if ($returnUrl) {
+            // Clear the session value after use
+            session()->forget('booking_return_url');
+            return redirect($returnUrl)->with('success', 'Selamat datang! Akun Anda berhasil dibuat. Silahkan lanjutkan booking Anda.');
         }
 
         // Check if there is an intended URL in session

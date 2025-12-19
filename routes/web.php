@@ -35,6 +35,14 @@ Route::get('/booking-confirmation/{clientRequest}', [\App\Http\Controllers\Publi
     ->name('public.booking.confirmation')
     ->middleware(['auth']);
 
+Route::get('/booking-confirmation/{clientRequest}', [\App\Http\Controllers\Public\PublicBookingController::class, 'showConfirmation'])
+    ->name('public.booking.confirmation')
+    ->middleware(['auth']);
+Route::post('/book-now/ajax', [\App\Http\Controllers\Public\PublicBookingController::class, 'storeBookingAjax'])
+    ->middleware('auth')
+    ->name('public.booking.store.ajax');
+
+
 // Public Catalog Item Detail
 Route::get('/catalog/item/{id}', [\App\Http\Controllers\Public\PublicCatalogController::class, 'show'])
     ->name('public.catalog.item.show');
@@ -232,6 +240,7 @@ Route::middleware('auth')->group(function () {
     // Client Portal (For Clients/Users)
     Route::middleware('role:Client|User')->prefix('portal')->name('client.')->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\Client\ClientDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/requests', [App\Http\Controllers\Client\ClientDashboardController::class, 'index'])->name('requests.index'); // Alias for booking list
         Route::get('/requests/{clientRequest}', [App\Http\Controllers\Client\ClientDashboardController::class, 'show'])->name('requests.show');
         Route::put('/requests/{clientRequest}', [App\Http\Controllers\Client\ClientDashboardController::class, 'update'])->name('requests.update');
         Route::get('/recommendations/{recommendation}', [App\Http\Controllers\Client\ClientDashboardController::class, 'showRecommendation'])->name('recommendations.show');
