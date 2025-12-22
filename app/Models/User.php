@@ -25,6 +25,9 @@ class User extends Authenticatable
         'password',
         'owner_id',
         'must_change_password',
+        'status',
+        'approved_by',
+        'approved_at',
     ];
 
     /**
@@ -64,4 +67,20 @@ class User extends Authenticatable
     {
         return $this->hasOne(ClientProfile::class);
     }
+    
+    public function clientRequests(): HasMany
+    {
+        return $this->hasMany(ClientRequest::class);
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class)->orderBy('created_at', 'desc');
+    }
+
+    public function unreadNotifications()
+    {
+        return $this->notifications()->where('is_read', false);
+    }
 }
+

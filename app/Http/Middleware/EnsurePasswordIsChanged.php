@@ -16,8 +16,12 @@ class EnsurePasswordIsChanged
     public function handle(Request $request, Closure $next): Response
     {
         if (auth()->check() && auth()->user()->must_change_password) {
-            if (! $request->routeIs('password.change') && ! $request->routeIs('logout')) {
-                return redirect()->route('password.change')->with('warning', 'You must change your password before continuing.');
+            // Exclude password change routes and logout route from this middleware
+            $excludedRoutes = ['password.change', 'password.change.update', 'logout'];
+            
+            if (! $request->routeIs($excludedRoutes)) {
+                return redirect()->route('password.change')
+                    ->with('warning', 'You must change your password before continuing.');
             }
         }
 

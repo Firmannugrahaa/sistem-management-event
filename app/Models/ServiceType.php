@@ -13,4 +13,9 @@ class ServiceType extends Model
         'name',
         'description',
     ];
+    
+    public function vendors()
+    {
+        return $this->hasMany(Vendor::class, 'service_type_id');
+    }
 }

@@ -1,0 +1,30 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('vendor_catalog_items', function (Blueprint $table) {
+            if (!Schema::hasColumn('vendor_catalog_items', 'show_on_landing')) {
+                $table->boolean('show_on_landing')->default(false)->after('show_stock');
+            }
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('vendor_catalog_items', function (Blueprint $table) {
+            $table->dropColumn('show_on_landing');
+        });
+    }
+};

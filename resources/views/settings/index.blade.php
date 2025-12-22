@@ -37,26 +37,61 @@
                             <h4 class="text-md font-semibold mb-3">Logo Perusahaan</h4>
 
                             <div class="flex flex-col md:flex-row items-start gap-6">
+                                <!-- Logo Preview -->
                                 <div class="flex-shrink-0">
-                                    @if($settings->company_logo_path)
-                                        <img src="{{ asset('storage/' . $settings->company_logo_path) }}"
+                                    @if(!empty($settings->company_logo_path))
+                                        <img id="logoPreview"
+                                             src="{{ asset($settings->company_logo_path) }}"
                                              alt="Logo Perusahaan"
-                                             class="w-24 h-24 object-contain rounded-lg border border-gray-300">
+                                             class="w-32 h-32 object-contain rounded-lg border-2 border-gray-300 dark:border-gray-600 p-2 bg-white">
                                     @else
-                                        <div class="w-24 h-24 bg-gray-200 rounded-lg border border-gray-300 flex items-center justify-center">
-                                            <span class="text-gray-500 text-sm">No Logo</span>
+                                        <div id="logoPreview" class="w-32 h-32 bg-gray-100 dark:bg-gray-700 rounded-lg border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                                            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            </svg>
                                         </div>
                                     @endif
                                 </div>
 
+                                <!-- Upload Controls -->
                                 <div class="flex-1">
-                                    <x-input-label for="company_logo_path" :value="__('Pilih Logo')" />
+                                    @php
+                                        $canUpdate = $settings->canUpdateLogo(Auth::user());
+                                        $daysRemaining = $settings->daysUntilLogoCanUpdate(Auth::user());
+                                        $hasLogo = !empty($settings->company_logo_path);
+                                    @endphp
+
+                                    @if(!$canUpdate && $hasLogo)
+                                        <div class="mb-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-400 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 px-4 py-3 rounded relative text-sm">
+                                            <strong>Informasi:</strong> Logo hanya dapat diubah atau dihapus 30 hari sekali. Anda masih harus menunggu <strong>{{ $daysRemaining }}</strong> hari lagi.
+                                        </div>
+                                    @endif
+
+                                    @if($hasLogo)
+                                        <x-input-label for="company_logo_path" :value="__('Edit Logo')" />
+                                    @else
+                                        <x-input-label for="company_logo_path" :value="__('Pilih Logo')" />
+                                    @endif
+
                                     <input type="file"
                                            id="company_logo_path"
                                            name="company_logo_path"
-                                           class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                                           accept="image/jpeg,image/png,image/jpg,image/gif,image/svg">
+                                           class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm {{ (!$canUpdate && $hasLogo) ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                           accept="image/jpeg,image/png,image/jpg,image/gif,image/svg"
+                                           {{ (!$canUpdate && $hasLogo) ? 'disabled' : '' }}
+                                           onchange="previewLogo(event)">
                                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: JPEG, PNG, JPG, GIF, SVG. Maksimal ukuran: 2MB</p>
+
+                                    @if($hasLogo && $canUpdate)
+                                        <button type="button" 
+                                                onclick="deleteLogo()"
+                                                class="mt-3 inline-flex items-center px-4 py-2 bg-red-600 dark:bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 dark:hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                            Hapus Logo
+                                        </button>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -526,5 +561,66 @@
                 console.error('Province select element not found');
             }
         });
+
+        // Logo preview function
+        function previewLogo(event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById('logoPreview');
+            
+            if (file) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    // Remove existing content
+                    preview.innerHTML = '';
+                    
+                    // Create new image element
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.alt = 'Logo Preview';
+                    img.className = 'w-32 h-32 object-contain rounded-lg border-2 border-gray-300 dark:border-gray-600 p-2 bg-white';
+                    
+                    // Replace preview content with new image
+                    if (preview.tagName === 'IMG') {
+                        preview.src = e.target.result;
+                    } else {
+                        preview.className = 'flex-shrink-0';
+                        preview.appendChild(img);
+                    }
+                }
+                
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Delete logo function
+        function deleteLogo() {
+            if (!confirm('Apakah Anda yakin ingin menghapus logo perusahaan?')) {
+                return;
+            }
+
+            // Create a form and submit it
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ route("superuser.settings.logo.delete") }}';
+            
+            // Add CSRF token
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = '{{ csrf_token() }}';
+            form.appendChild(csrfInput);
+            
+            // Add DELETE method
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'DELETE';
+            form.appendChild(methodInput);
+            
+            // Append form to body and submit
+            document.body.appendChild(form);
+            form.submit();
+        }
     </script>
 </x-app-layout>

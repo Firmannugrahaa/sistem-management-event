@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vendor;
+use App\Models\ServiceType;
+use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
@@ -14,8 +16,7 @@ class VendorController extends Controller
      */
     public function index()
     {
-        $vendors = Vendor::latest()->paginate(10);
-        return view('vendors.index', compact('vendors'));
+        return redirect()->route('team-vendor.index', ['view' => 'vendor']);
     }
 
     /**
@@ -23,8 +24,7 @@ class VendorController extends Controller
      */
     public function create()
     {
-        $this->authorize('create', Vendor::class);
-        return view('vendors.create');
+        return redirect()->route('team.vendors.create');
     }
 
     /**
@@ -44,7 +44,7 @@ class VendorController extends Controller
 
         Vendor::create($validated);
 
-        return redirect()->route('vendors.index')->with('success', 'Vendor berhasil ditambahkan.');
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', 'Vendor berhasil ditambahkan.');
     }
 
     /**
@@ -83,7 +83,8 @@ class VendorController extends Controller
     public function edit(Vendor $vendor)
     {
         $this->authorize('update', $vendor);
-        return view('vendors.edit', compact('vendor'));
+        $serviceTypes = ServiceType::all();
+        return view('vendors.edit', compact('vendor', 'serviceTypes'));
     }
 
     /**
@@ -92,18 +93,46 @@ class VendorController extends Controller
     public function update(Request $request, Vendor $vendor)
     {
         $this->authorize('update', $vendor);
+        
+        $user = $vendor->user;
+
+        $request->merge([
+            'username' => strtolower($request->username),
+            'email' => strtolower($request->email),
+        ]);
+
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id|unique:vendors,user_id,' . $vendor->id, // Allow same vendor to keep its user_id
+            // User fields
+            'username' => ['required', 'string', 'max:255', 'alpha_dash', Rule::unique('users')->ignore($user->id)],
+
+            // Vendor fields
+            'brand_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255',
             'service_type_id' => 'required|exists:service_types,id',
-            'category' => 'required|string|max:255',
             'contact_person' => 'required|string|max:255',
             'phone_number' => 'required|string|max:20',
             'address' => 'nullable|string',
         ]);
 
-        $vendor->update($validated);
+        // Update User (username only)
+        $user->update([
+            'username' => $request->username,
+        ]);
 
-        return redirect()->route('vendors.index')->with('success', 'Vendor berhasil diperbarui.');
+        // Update Vendor (including brand_name and email)
+        $serviceType = ServiceType::find($request->service_type_id);
+        
+        $vendor->update([
+            'brand_name' => $request->brand_name,
+            'email' => $request->email,
+            'service_type_id' => $request->service_type_id,
+            'category' => $serviceType->name,
+            'contact_person' => $request->contact_person,
+            'phone_number' => $request->phone_number,
+            'address' => $request->address,
+        ]);
+
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', 'Vendor berhasil diperbarui.');
     }
 
     /**
@@ -113,6 +142,46 @@ class VendorController extends Controller
     {
         $this->authorize('delete', $vendor);
         $vendor->delete();
-        return redirect()->route('vendors.index')->with('success', 'Vendor berhasil dihapus.');
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', 'Vendor berhasil dihapus.');
+    }
+    /**
+     * Get vendor offerings (Packages + Catalog Items) for auto-fill
+     */
+    public function getOfferings(Vendor $vendor)
+    {
+        // Simple authorization
+        if (!auth()->check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $packages = $vendor->packages()
+            ->select('id', 'name', 'price', 'description')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => 'pkg_' . $item->id,
+                    'name' => '[Package] ' . $item->name,
+                    'price' => $item->price,
+                    'description' => $item->description,
+                    'type' => 'package'
+                ];
+            });
+
+        $catalogItems = $vendor->catalogItems()
+            ->select('id', 'name', 'price', 'description')
+            ->get()
+            ->map(function ($item) {
+                 return [
+                    'id' => 'item_' . $item->id,
+                    'name' => '[Item] ' . $item->name,
+                    'price' => $item->price,
+                    'description' => $item->description,
+                    'type' => 'item'
+                ];
+            });
+
+        $offerings = $packages->concat($catalogItems);
+
+        return response()->json($offerings);
     }
 }

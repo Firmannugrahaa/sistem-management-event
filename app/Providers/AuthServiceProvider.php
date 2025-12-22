@@ -25,6 +25,7 @@ class AuthServiceProvider extends ServiceProvider
         'App\Models\Voucher' => 'App\Policies\VoucherPolicy',
         'App\Models\Venue' => 'App\Policies\VenuePolicy',
         'App\Models\CompanySetting' => 'App\Policies\CompanySettingPolicy',
+        'App\Models\ClientRequest' => 'App\Policies\ClientRequestPolicy',
     ];
 
     /**
@@ -53,7 +54,19 @@ class AuthServiceProvider extends ServiceProvider
                 return true;
             }
             // Check if user has the specific access-settings permission
-            return $user->can('access-settings');
+            // Use hasPermissionTo to avoid infinite recursion with the gate itself
+            return $user->hasPermissionTo('access-settings');
+        });
+        
+        // Define gate for managing checklist templates
+        Gate::define('manage-checklist-templates', function ($user) {
+            // SuperUser always has access
+            if ($user->hasRole('SuperUser')) {
+                return true;
+            }
+            // Check for specific permission (can be assigned to Owner/Admin via permission matrix)
+            // Use hasPermissionTo to avoid infinite recursion with the gate itself
+            return $user->hasPermissionTo('manage-checklist-templates');
         });
     }
 }

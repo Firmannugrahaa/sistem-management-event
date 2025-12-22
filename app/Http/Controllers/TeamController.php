@@ -18,12 +18,15 @@ class TeamController extends Controller
      */
     public function index()
     {
-        $teamMembers = User::where('owner_id', auth()->id())
-                         ->whereDoesntHave('roles', function ($query) {
-                             $query->where('name', 'Vendor');
-                         })
-                         ->with('roles')
-                         ->paginate(10);
+        // Determine the master owner ID for the team/company
+        $teamOwnerId = auth()->user()->owner_id ?? auth()->id();
+        
+        $teamMembers = User::where('owner_id', $teamOwnerId)
+            ->whereDoesntHave('roles', function ($query) {
+                $query->where('name', 'Vendor');
+            })
+            ->with('roles')
+            ->paginate(10);
         return view('team.index', compact('teamMembers'));
     }
 
@@ -55,17 +58,33 @@ class TeamController extends Controller
             'role' => ['required', 'exists:roles,name'],
         ]);
 
+        $creator = auth()->user();
+        $canCreateWithoutApproval = $creator->can('user.auto_approve_on_create');
+
+        // If creator is not a SuperUser, new user belongs to the creator's company.
+        // If creator is a SuperUser, they are creating a new Owner, so owner_id will be set later.
+        $ownerIdForNewUser = !$creator->hasRole('SuperUser') ? ($creator->owner_id ?? $creator->id) : null;
+
         $newUser = User::create([
             'name' => $request->name,
             'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'owner_id' => auth()->id(), // Set the owner
+            'owner_id' => $ownerIdForNewUser,
+            'status' => $canCreateWithoutApproval ? 'approved' : 'pending',
+            'approved_by' => $canCreateWithoutApproval ? $creator->id : null,
+            'approved_at' => $canCreateWithoutApproval ? now() : null,
         ]);
+
+        // If a SuperUser created this user, establish them as the owner of their own new 'company'.
+        if ($creator->hasRole('SuperUser') && $newUser->owner_id === null) {
+            $newUser->owner_id = $newUser->id;
+            $newUser->save();
+        }
 
         $newUser->assignRole($request->role);
 
-        return redirect()->route('team.index')->with('success', 'Team member added successfully.');
+        return redirect()->route('team-vendor.index', ['view' => 'team'])->with('success', 'Team member added successfully.');
     }
 
     /**
@@ -100,23 +119,40 @@ class TeamController extends Controller
         // Generate temporary password from username + current year
         $currentYear = date('Y');
         $temporaryPassword = $request->username . $currentYear;
-        
+
+        $creator = auth()->user();
+        $canCreateWithoutApproval = $creator->can('vendor.auto_approve_on_create');
+
+        // If creator is not a SuperUser, new user belongs to the creator's company.
+        $ownerIdForNewUser = !$creator->hasRole('SuperUser') ? ($creator->owner_id ?? $creator->id) : null;
+
         $vendorUser = User::create([
             'name' => $request->business_name,
             'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($temporaryPassword),
-            'owner_id' => auth()->id(),
+            'owner_id' => $ownerIdForNewUser,
             'must_change_password' => true,
+            'status' => $canCreateWithoutApproval ? 'approved' : 'pending',
+            'approved_by' => $canCreateWithoutApproval ? $creator->id : null,
+            'approved_at' => $canCreateWithoutApproval ? now() : null,
         ]);
+
+        // If a SuperUser created this user, establish them as the owner of their own new 'company'.
+        if ($creator->hasRole('SuperUser') && $vendorUser->owner_id === null) {
+            $vendorUser->owner_id = $vendorUser->id;
+            $vendorUser->save();
+        }
 
         $vendorUser->assignRole('Vendor');
 
         // Get the service type name to use as category
         $serviceType = ServiceType::findOrFail($request->service_type_id);
-        
+
         Vendor::create([
             'user_id' => $vendorUser->id,
+            'brand_name' => $request->business_name, // Copy from business_name
+            'email' => $request->email, // Copy from email
             'service_type_id' => $request->service_type_id,
             'category' => $serviceType->name, // Use service type name as category
             'contact_person' => $request->contact_person,
@@ -132,11 +168,14 @@ class TeamController extends Controller
      */
     public function edit(User $member)
     {
+        // Determine the master owner ID for the team/company
+        $teamOwnerId = auth()->user()->owner_id ?? auth()->id();
+        
         // Authorization: Make sure the user being edited belongs to the authenticated user's team
-        if ($member->owner_id !== auth()->id()) {
+        if ($member->owner_id !== $teamOwnerId) {
             abort(403, 'UNAUTHORIZED_ACTION');
         }
-        
+
         $roles = \Spatie\Permission\Models\Role::whereIn('name', ['Admin', 'Staff'])->get();
         return view('team.edit', compact('member', 'roles'));
     }
@@ -146,11 +185,14 @@ class TeamController extends Controller
      */
     public function update(Request $request, User $member)
     {
+        // Determine the master owner ID for the team/company
+        $teamOwnerId = auth()->user()->owner_id ?? auth()->id();
+        
         // Authorization: Make sure the user being updated belongs to the authenticated user's team
-        if ($member->owner_id !== auth()->id()) {
+        if ($member->owner_id !== $teamOwnerId) {
             abort(403, 'UNAUTHORIZED_ACTION');
         }
-        
+
         $request->merge([
             'username' => strtolower($request->username),
             'email' => strtolower($request->email),
@@ -158,10 +200,20 @@ class TeamController extends Controller
 
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:255', 'alpha_dash', 
-                Rule::unique('users', 'username')->ignore($member->id)],
-            'email' => ['required', 'string', 'email', 'max:255', 
-                Rule::unique('users', 'email')->ignore($member->id)],
+            'username' => [
+                'required',
+                'string',
+                'max:255',
+                'alpha_dash',
+                Rule::unique('users', 'username')->ignore($member->id)
+            ],
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($member->id)
+            ],
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', 'exists:roles,name'],
         ]);
@@ -182,7 +234,7 @@ class TeamController extends Controller
         $member->roles()->sync([]);
         $member->assignRole($request->role);
 
-        return redirect()->route('team.index')->with('success', 'Team member updated successfully.');
+        return redirect()->route('team-vendor.index', ['view' => 'team'])->with('success', 'Team member updated successfully.');
     }
 
     /**
@@ -190,14 +242,74 @@ class TeamController extends Controller
      */
     public function destroy(User $member)
     {
+        // Determine the master owner ID for the team/company
+        $teamOwnerId = auth()->user()->owner_id ?? auth()->id();
+        
         // Authorization: Make sure the user being deleted belongs to the authenticated user's team
-        if ($member->owner_id !== auth()->id()) {
+        if ($member->owner_id !== $teamOwnerId) {
             abort(403, 'UNAUTHORIZED_ACTION');
         }
 
         $member->delete();
 
-        return redirect()->route('team.index')->with('success', 'Team member removed successfully.');
+        return redirect()->route('team-vendor.index', ['view' => 'team'])->with('success', 'Team member removed successfully.');
+    }
+
+    /**
+     * Approve a pending team member.
+     */
+    public function approveUser(User $member)
+    {
+        $member->update([
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
+
+        return redirect()->route('team-vendor.index', ['view' => 'team'])->with('success', 'Team member approved successfully.');
+    }
+
+    /**
+     * Reject and delete a pending team member.
+     */
+    public function rejectUser(User $member)
+    {
+        // Ensure we are only rejecting a pending user
+        if ($member->status !== 'pending') {
+            return redirect()->route('team-vendor.index', ['view' => 'team'])->with('error', 'This user is not pending approval.');
+        }
+        $memberName = $member->name;
+        $member->delete();
+
+        return redirect()->route('team-vendor.index', ['view' => 'team'])->with('success', "Pending team member '{$memberName}' has been rejected and removed.");
+    }
+
+    /**
+     * Approve a pending vendor.
+     */
+    public function approveVendor(User $user)
+    {
+        $user->update([
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
+
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', 'Vendor approved successfully.');
+    }
+
+    /**
+     * Reject and delete a pending vendor.
+     */
+    public function rejectVendor(User $user)
+    {
+        // Ensure we are only rejecting a pending user
+        if ($user->status !== 'pending') {
+            return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('error', 'This vendor is not pending approval.');
+        }
+        $vendorName = $user->name;
+        $user->delete();
+
+        return redirect()->route('team-vendor.index', ['view' => 'vendor'])->with('success', "Pending vendor '{$vendorName}' has been rejected and removed.");
     }
 }
-

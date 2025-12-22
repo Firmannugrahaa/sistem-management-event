@@ -35,6 +35,14 @@ class PermissionSeeder extends Seeder
             'role.read',
             'role.update',
             'role.delete',
+            // Approval Workflow Permissions
+            'user.auto_approve_on_create',
+            'vendor.auto_approve_on_create',
+            'user.approve',
+            'vendor.approve',
+            'vendor.delete',
+            // Checklist Management
+            'manage-checklist-templates',
         ];
 
         foreach ($permissions as $permission) {
@@ -44,7 +52,11 @@ class PermissionSeeder extends Seeder
         // create other roles and assign specific permissions (excluding SuperUser)
         // SuperUser role and permissions are handled separately in SuperUserSeeder
         $roles = [
-            'Owner' => ['create_events', 'edit_events', 'delete_events', 'view_guests'],
+            'Owner' => [
+                'create_events', 'edit_events', 'delete_events', 'view_guests',
+                'user.auto_approve_on_create', 'vendor.auto_approve_on_create',
+                'user.approve', 'vendor.approve', 'user.delete', 'vendor.delete'
+            ],
             'Admin' => ['view_events', 'create_events', 'edit_events', 'view_guests'],
             'Staff' => ['view_events', 'view_guests'],
             'Vendor' => ['view_events'],

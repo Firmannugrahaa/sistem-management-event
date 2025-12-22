@@ -16,6 +16,7 @@ class Event extends Model
     protected $fillable = [
         'user_id',
         'venue_id',
+        'client_request_id',
         'event_name',
         'description',
         'start_time',
@@ -41,6 +42,11 @@ class Event extends Model
         return $this->belongsTo(Venue::class);
     }
 
+    public function clientRequest(): BelongsTo
+    {
+        return $this->belongsTo(ClientRequest::class);
+    }
+
     public function guests(): HasMany
     {
         return $this->hasMany(Guest::class);
@@ -54,5 +60,36 @@ class Event extends Model
     public function invoice(): HasOne
     {
         return $this->hasOne(Invoice::class);
+    }
+
+    public function crews(): HasMany
+    {
+        return $this->hasMany(EventCrew::class);
+    }
+
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(EventTask::class);
+    }
+
+    public function vendorItems(): HasMany
+    {
+        return $this->hasMany(EventVendorItem::class);
+    }
+
+    /**
+     * Get non-partner vendor charges for this event
+     */
+    public function nonPartnerCharges(): HasMany
+    {
+        return $this->hasMany(NonPartnerVendorCharge::class);
+    }
+
+    /**
+     * Get total non-partner charges amount
+     */
+    public function getTotalNonPartnerChargesAttribute(): float
+    {
+        return $this->nonPartnerCharges()->sum('charge_amount');
     }
 }

@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             PortfolioSeeder::class,
             ServiceSeeder::class,
             VendorProfileSeeder::class,
+            UserIndonesianSeeder::class,
         ]);
     }
 }
