@@ -56,4 +56,15 @@ class VendorPackage extends Model
         if ($this->individual_price == 0) return 0;
         return round(($this->savings / $this->individual_price) * 100);
     }
+
+    /**
+     * Relationship to catalog items (products) in this package
+     * With pivot data: quantity, unit, notes, is_included
+     */
+    public function items(): BelongsToMany
+    {
+        return $this->belongsToMany(VendorCatalogItem::class, 'vendor_package_items', 'package_id', 'catalog_item_id')
+            ->withPivot('quantity', 'unit', 'notes', 'is_included')
+            ->withTimestamps();
+    }
 }

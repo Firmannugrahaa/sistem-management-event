@@ -56,7 +56,13 @@ class VendorPackageController extends Controller
         // Get all services for this vendor
         $services = $vendor->products;
         
-        return view('vendor.packages.create', compact('vendor', 'services'));
+        // Get catalog items for products section
+        $catalogItems = $vendor->catalogItems()->with('category')->get();
+        
+        // Get vendor category for conditional fields
+        $vendorCategory = $vendor->serviceType ? strtolower($vendor->serviceType->name) : 'other';
+        
+        return view('vendor.packages.create', compact('vendor', 'services', 'catalogItems', 'vendorCategory'));
     }
 
     public function store(Request $request)
@@ -84,20 +90,37 @@ class VendorPackageController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'services' => 'required|array|min:1',
+            'services' => 'nullable|array',
             'services.*' => 'exists:vendor_products,id',
             'benefits' => 'nullable|array',
             'benefits.*' => 'nullable|string',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'is_visible' => 'boolean',
+            // Catalog items validation
+            'items' => 'nullable|array',
+            'items.*.catalog_item_id' => 'required_with:items|exists:vendor_catalog_items,id',
+            'items.*.quantity' => 'nullable|integer|min:1',
+            'items.*.unit' => 'nullable|string|max:50',
+            'items.*.notes' => 'nullable|string|max:255',
         ]);
 
         // Verify all selected services belong to this vendor
-        $serviceIds = $request->services;
-        $validServices = $vendor->products()->whereIn('id', $serviceIds)->pluck('id')->toArray();
+        $serviceIds = $request->services ?? [];
+        if (!empty($serviceIds)) {
+            $validServices = $vendor->products()->whereIn('id', $serviceIds)->pluck('id')->toArray();
+            if (count($validServices) !== count($serviceIds)) {
+                return back()->withErrors(['services' => 'Some selected services do not belong to you.'])->withInput();
+            }
+        }
         
-        if (count($validServices) !== count($serviceIds)) {
-            return back()->withErrors(['services' => 'Some selected services do not belong to you.'])->withInput();
+        // Verify all selected catalog items belong to this vendor
+        $items = $request->items ?? [];
+        if (!empty($items)) {
+            $catalogItemIds = collect($items)->pluck('catalog_item_id')->filter()->toArray();
+            $validItems = $vendor->catalogItems()->whereIn('id', $catalogItemIds)->pluck('id')->toArray();
+            if (count($validItems) !== count($catalogItemIds)) {
+                return back()->withErrors(['items' => 'Some selected products do not belong to you.'])->withInput();
+            }
         }
 
         // Handle thumbnail upload
@@ -121,7 +144,25 @@ class VendorPackageController extends Controller
         ]);
 
         // Attach services
-        $package->services()->attach($serviceIds);
+        if (!empty($serviceIds)) {
+            $package->services()->attach($serviceIds);
+        }
+        
+        // Attach catalog items with pivot data
+        if (!empty($items)) {
+            $itemsToAttach = [];
+            foreach ($items as $item) {
+                if (!empty($item['catalog_item_id'])) {
+                    $itemsToAttach[$item['catalog_item_id']] = [
+                        'quantity' => $item['quantity'] ?? 1,
+                        'unit' => $item['unit'] ?? null,
+                        'notes' => $item['notes'] ?? null,
+                        'is_included' => true,
+                    ];
+                }
+            }
+            $package->items()->attach($itemsToAttach);
+        }
 
         return redirect()->route('vendor.packages.index')
             ->with('success', 'Paket berhasil dibuat.');
@@ -154,9 +195,15 @@ class VendorPackageController extends Controller
         }
         
         $services = $vendor->products;
-        $package->load('services');
+        $package->load('services', 'items');
         
-        return view('vendor.packages.edit', compact('package', 'vendor', 'services'));
+        // Get catalog items for products section
+        $catalogItems = $vendor->catalogItems()->with('category')->get();
+        
+        // Get vendor category for conditional fields
+        $vendorCategory = $vendor->serviceType ? strtolower($vendor->serviceType->name) : 'other';
+        
+        return view('vendor.packages.edit', compact('package', 'vendor', 'services', 'catalogItems', 'vendorCategory'));
     }
 
     public function update(Request $request, VendorPackage $package)
@@ -189,20 +236,37 @@ class VendorPackageController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'services' => 'required|array|min:1',
+            'services' => 'nullable|array',
             'services.*' => 'exists:vendor_products,id',
             'benefits' => 'nullable|array',
             'benefits.*' => 'nullable|string',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'is_visible' => 'boolean',
+            // Catalog items validation
+            'items' => 'nullable|array',
+            'items.*.catalog_item_id' => 'required_with:items|exists:vendor_catalog_items,id',
+            'items.*.quantity' => 'nullable|integer|min:1',
+            'items.*.unit' => 'nullable|string|max:50',
+            'items.*.notes' => 'nullable|string|max:255',
         ]);
 
         // Verify all selected services belong to this vendor
-        $serviceIds = $request->services;
-        $validServices = $vendor->products()->whereIn('id', $serviceIds)->pluck('id')->toArray();
+        $serviceIds = $request->services ?? [];
+        if (!empty($serviceIds)) {
+            $validServices = $vendor->products()->whereIn('id', $serviceIds)->pluck('id')->toArray();
+            if (count($validServices) !== count($serviceIds)) {
+                return back()->withErrors(['services' => 'Some selected services do not belong to you.'])->withInput();
+            }
+        }
         
-        if (count($validServices) !== count($serviceIds)) {
-            return back()->withErrors(['services' => 'Some selected services do not belong to you.'])->withInput();
+        // Verify all selected catalog items belong to this vendor
+        $items = $request->items ?? [];
+        if (!empty($items)) {
+            $catalogItemIds = collect($items)->pluck('catalog_item_id')->filter()->toArray();
+            $validItems = $vendor->catalogItems()->whereIn('id', $catalogItemIds)->pluck('id')->toArray();
+            if (count($validItems) !== count($catalogItemIds)) {
+                return back()->withErrors(['items' => 'Some selected products do not belong to you.'])->withInput();
+            }
         }
 
         // Handle thumbnail upload
@@ -230,6 +294,24 @@ class VendorPackageController extends Controller
 
         // Sync services
         $package->services()->sync($serviceIds);
+        
+        // Sync catalog items with pivot data
+        if (!empty($items)) {
+            $itemsToSync = [];
+            foreach ($items as $item) {
+                if (!empty($item['catalog_item_id'])) {
+                    $itemsToSync[$item['catalog_item_id']] = [
+                        'quantity' => $item['quantity'] ?? 1,
+                        'unit' => $item['unit'] ?? null,
+                        'notes' => $item['notes'] ?? null,
+                        'is_included' => true,
+                    ];
+                }
+            }
+            $package->items()->sync($itemsToSync);
+        } else {
+            $package->items()->detach();
+        }
 
         return redirect()->route('vendor.packages.index')
             ->with('success', 'Paket berhasil diperbarui.');
