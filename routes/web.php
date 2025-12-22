@@ -83,28 +83,14 @@ Route::middleware(['auth', 'verified', 'role:Client'])->group(function () {
         ->name('client.checklist.item.update');
     Route::delete('/client/checklist/item/{item}', [App\Http\Controllers\Client\ChecklistController::class, 'destroyItem'])
         ->name('client.checklist.item.destroy');
+
+    // Client Recommendation Item Response
+    Route::post('/client/recommendation-items/{item}/respond', [App\Http\Controllers\Client\ClientDashboardController::class, 'respondRecommendationItem'])
+        ->name('client.recommendation-items.respond');
 });
 
-// Client Booking Wizard
-Route::middleware(['auth', 'verified', 'role:Client'])->prefix('client/booking')->name('client.booking.')->group(function () {
-    Route::get('/start', [App\Http\Controllers\Client\BookingWizardController::class, 'start'])->name('start');
-    Route::post('/mode', [App\Http\Controllers\Client\BookingWizardController::class, 'storeMode'])->name('mode.store');
-    
-    // Package Flow (Step 2a)
-    Route::get('/packages', [App\Http\Controllers\Client\BookingWizardController::class, 'showPackages'])->name('packages');
-    Route::post('/packages', [App\Http\Controllers\Client\BookingWizardController::class, 'selectPackage'])->name('package.select');
-    
-    // Custom Flow (Step 2b)
-    Route::get('/vendors', [App\Http\Controllers\Client\BookingWizardController::class, 'showVendors'])->name('vendors');
-    Route::post('/vendors', [App\Http\Controllers\Client\BookingWizardController::class, 'selectVendors'])->name('vendors.select');
-    
-    // Common Steps
-    Route::get('/details', [App\Http\Controllers\Client\BookingWizardController::class, 'showEventDetails'])->name('details');
-    Route::post('/details', [App\Http\Controllers\Client\BookingWizardController::class, 'storeEventDetails'])->name('details.store');
-    
-    Route::get('/review', [App\Http\Controllers\Client\BookingWizardController::class, 'showReview'])->name('review');
-    Route::post('/submit', [App\Http\Controllers\Client\BookingWizardController::class, 'submit'])->name('submit');
-});
+
+
 
 
 
@@ -195,6 +181,13 @@ Route::middleware('auth')->group(function () {
         Route::resource('portfolios', App\Http\Controllers\CompanyPortfolioController::class);
         Route::delete('/portfolios/images/{id}', [App\Http\Controllers\CompanyPortfolioController::class, 'destroyImage'])->name('portfolios.images.destroy');
         Route::post('/portfolios/images/{id}/toggle-gallery', [App\Http\Controllers\CompanyPortfolioController::class, 'toggleGalleryStatus'])->name('portfolios.images.toggle-gallery');
+    });
+    
+    // Service Types Management (Owner/Admin Only)
+    Route::middleware(['role:Owner|Admin|SuperUser'])->group(function () {
+        Route::resource('service-types', App\Http\Controllers\ServiceTypeController::class)->except(['show']);
+        Route::post('service-types/quick-store', [App\Http\Controllers\ServiceTypeController::class, 'quickStore'])->name('service-types.quick-store');
+        Route::get('api/service-types', [App\Http\Controllers\ServiceTypeController::class, 'list'])->name('api.service-types.list');
     });
 
     // Event Packages Management (Admin/Owner Only)

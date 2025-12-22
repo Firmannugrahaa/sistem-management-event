@@ -80,8 +80,8 @@
         {{-- Navigation Links --}}
         <div class="flex-1 flex flex-col justify-between py-6 px-3 overflow-y-auto">
             <div class="space-y-2">
-                {{-- Dashboard (Hidden for Staff - they have dedicated dashboard) --}}
-                @if(!auth()->user()->hasRole('Staff'))
+                {{-- Dashboard (Hidden for Staff and Client/User - they have dedicated dashboards) --}}
+                @if(!auth()->user()->hasAnyRole(['Staff', 'Client', 'User']))
                 <a href="{{ route('dashboard') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] {{ request()->routeIs('dashboard') ? 'bg-[#012A4A] text-white' : 'text-[#1A1A1A]' }}">
                     <svg class="w-6 h-6 flex-shrink-0 p-1 rounded {{ request()->routeIs('dashboard') ? 'bg-[#c1dfeb] text-[#012A4A]' : 'bg-[#012A4A] text-white' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -95,8 +95,16 @@
                 {{-- Client Portal (For Clients/Users) --}}
                 @if(auth()->user()->hasRole(['Client', 'User']))
                 <a href="{{ route('client.dashboard') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] {{ request()->routeIs('client.*') ? 'bg-[#012A4A] text-white' : 'text-[#1A1A1A]' }}">
-                    <svg class="w-6 h-6 flex-shrink-0 p-1 rounded {{ request()->routeIs('client.*') ? 'bg-[#c1dfeb] text-[#012A4A]' : 'bg-[#012A4A] text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] {{ request()->routeIs('client.dashboard') ? 'bg-[#012A4A] text-white' : 'text-[#1A1A1A]' }}">
+                    <svg class="w-6 h-6 flex-shrink-0 p-1 rounded {{ request()->routeIs('client.dashboard') ? 'bg-[#c1dfeb] text-[#012A4A]' : 'bg-[#012A4A] text-white' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+                        <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    </svg>
+                    <span class="text-sm font-medium whitespace-nowrap" x-show="sidebarOpen" x-transition>Dashboard</span>
+                </a>
+                <a href="{{ route('client.requests.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] {{ request()->routeIs('client.requests.*') ? 'bg-[#012A4A] text-white' : 'text-[#1A1A1A]' }}">
+                    <svg class="w-6 h-6 flex-shrink-0 p-1 rounded {{ request()->routeIs('client.requests.*') ? 'bg-[#c1dfeb] text-[#012A4A]' : 'bg-[#012A4A] text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                     </svg>
                     <span class="text-sm font-medium whitespace-nowrap" x-show="sidebarOpen" x-transition>My Requests</span>
@@ -227,6 +235,10 @@
                         <a href="{{ route('event-packages.index') }}"
                             class="flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] {{ request()->routeIs('event-packages.*') ? 'bg-[#E8F5E9] text-[#27AE60]' : 'text-[#666666]' }}">
                             <span class="text-sm whitespace-nowrap" x-show="sidebarOpen" x-transition>Event Packages</span>
+                        </a>
+                        <a href="{{ route('service-types.index') }}"
+                            class="flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-[#F0F0F0] {{ request()->routeIs('service-types.*') ? 'bg-[#E8F5E9] text-[#27AE60]' : 'text-[#666666]' }}">
+                            <span class="text-sm whitespace-nowrap" x-show="sidebarOpen" x-transition>Service Types</span>
                         </a>
                         @endif
                     </div>

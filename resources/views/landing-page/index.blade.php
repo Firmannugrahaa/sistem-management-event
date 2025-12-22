@@ -498,10 +498,10 @@
                         </ul>
 
                         {{-- CTA --}}
-                        <a href="{{ route('event-packages.show', $premiumPackage->slug) }}" 
-                           class="block w-full text-center bg-white text-[#9CAF88] px-6 py-4 rounded-xl font-bold hover:bg-gray-50 transition shadow-xl text-lg">
+                        <button onclick="selectPackage({{ $premiumPackage->id }}, '{{ addslashes($premiumPackage->name) }}', {{ $premiumPackage->final_price }}, '{{ $premiumPackage->slug }}')" 
+                           class="block w-full text-center bg-white text-[#9CAF88] px-6 py-4 rounded-xl font-bold hover:bg-gray-50 transition shadow-xl text-lg cursor-pointer">
                             Pilih Paket Ini →
-                        </a>
+                        </button>
                     </div>
                 </div>
                 @endif
@@ -951,4 +951,78 @@
             </div>
         </div>
     </section>
+
+@push('scripts')
+<script>
+// Package Selection Soft Confirmation Flow
+function selectPackage(packageId, packageName, packagePrice, packageSlug) {
+    // Save package to localStorage for persistence
+    const selectedPackage = {
+        id: packageId,
+        name: packageName,
+        final_price: packagePrice,
+        slug: packageSlug,
+        selected_at: new Date().toISOString()
+    };
+    localStorage.setItem('preSelectedPackage', JSON.stringify(selectedPackage));
+    
+    // Also pre-set booking form data with package mode
+    const bookingFormData = {
+        currentStep: 1,
+        bookingMethod: 'package',
+        selectedPackage: selectedPackage,
+        eventType: '',
+        eventDate: '',
+        eventLocation: '',
+        eventNotes: '',
+        serviceSelections: {},
+        nonPartnerVendors: []
+    };
+    localStorage.setItem('bookingFormData', JSON.stringify(bookingFormData));
+    
+    // Format price
+    const formattedPrice = new Intl.NumberFormat('id-ID').format(packagePrice);
+    
+    // Show soft confirmation toast (non-intrusive)
+    Swal.fire({
+        toast: true,
+        position: 'center',
+        icon: 'success',
+        title: `<strong>Paket ${packageName} dipilih!</strong>`,
+        html: `
+            <div class="text-sm text-gray-600 mt-1">
+                Harga: <strong class="text-[#9CAF88]">Rp ${formattedPrice}</strong>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Anda bisa melanjutkan booking atau melihat detail paket</p>
+        `,
+        showConfirmButton: true,
+        showCancelButton: true,
+        confirmButtonText: '🚀 Lanjutkan Booking',
+        cancelButtonText: '📋 Lihat Detail',
+        confirmButtonColor: '#9CAF88',
+        cancelButtonColor: '#8B8680',
+        timer: 10000,
+        timerProgressBar: true,
+        customClass: {
+            popup: 'rounded-2xl shadow-2xl',
+            title: 'text-left text-base font-semibold text-gray-800',
+            htmlContainer: 'text-left',
+        },
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer);
+            toast.addEventListener('mouseleave', Swal.resumeTimer);
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Continue to booking form
+            window.location.href = '{{ route("public.booking.form") }}';
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+            // View package details - use correct route /packages/{slug}
+            window.location.href = '/packages/' + packageSlug;
+        }
+        // If timer expires or closed, do nothing - user stays on page
+    });
+}
+</script>
+@endpush
 @endsection

@@ -43,6 +43,33 @@
                 </div>
             @endif
 
+            {{-- VENUE AUTO-FILL INFO BANNER --}}
+            @if(isset($venueData) && $venueData)
+                <div class="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 rounded-r-lg">
+                    <div class="flex items-center">
+                        <svg class="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        <div class="text-sm text-green-700 dark:text-green-300">
+                            <span class="font-medium">Venue otomatis terisi dari booking:</span>
+                            <strong>{{ $venueData['vendor_name'] ?? $venueData['external_name'] ?? 'Venue' }}</strong>
+                            @if(($venueData['source'] ?? '') === 'package')
+                                <span class="text-xs ml-1 bg-green-200 dark:bg-green-800 px-2 py-0.5 rounded">(dari Paket - tidak dapat diubah)</span>
+                            @elseif(($venueData['source'] ?? '') === 'recommendation')
+                                <span class="text-xs ml-1 bg-blue-200 dark:bg-blue-800 px-2 py-0.5 rounded">(dari Rekomendasi)</span>
+                            @elseif(($venueData['source'] ?? '') === 'client_selection')
+                                <span class="text-xs ml-1 bg-purple-200 dark:bg-purple-800 px-2 py-0.5 rounded">(pilihan Client)</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                
+                {{-- Pass venue data to JavaScript --}}
+                <script>
+                    window.preselectedVenue = @json($venueData);
+                </script>
+            @endif
+
             <div class="mb-4">
               <x-input-label for="event_name" :value="__('Nama Event')" />
               <x-text-input id="event_name" class="block mt-1 w-full border-blue-300 dark:border-blue-900 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="event_name" :value="old('event_name', isset($clientRequest) ? $clientRequest->event_type . ' - ' . $clientRequest->client_name : '')" required autofocus />
@@ -152,7 +179,66 @@
 
               // Initialize on page load
               document.addEventListener('DOMContentLoaded', function() {
-                toggleVenueFields();
+                // Auto-fill venue from preselected client booking data
+                if (window.preselectedVenue) {
+                    const venueData = window.preselectedVenue;
+                    const venueType = document.getElementById('venue_type');
+                    
+                    if (venueData.type === 'vendor') {
+                        // Set venue type to vendor
+                        venueType.value = 'vendor';
+                        toggleVenueFields();
+                        
+                        // Select the vendor from dropdown
+                        const vendorSelect = document.getElementById('vendor_venue_id');
+                        if (vendorSelect && venueData.vendor_id) {
+                            vendorSelect.value = venueData.vendor_id;
+                        }
+                        
+                        // Fill venue details
+                        const venueName = document.getElementById('vendor_venue_name');
+                        const venuePrice = document.getElementById('vendor_venue_price');
+                        
+                        if (venueName) venueName.value = venueData.vendor_name || '';
+                        if (venuePrice) venuePrice.value = venueData.price || '';
+                        
+                        // If from package, make fields read-only
+                        if (venueData.read_only) {
+                            if (vendorSelect) {
+                                vendorSelect.disabled = true;
+                                // Create hidden input to submit the value
+                                const hiddenInput = document.createElement('input');
+                                hiddenInput.type = 'hidden';
+                                hiddenInput.name = 'vendor_venue_id';
+                                hiddenInput.value = venueData.vendor_id;
+                                vendorSelect.parentNode.appendChild(hiddenInput);
+                            }
+                            if (venueName) venueName.readOnly = true;
+                            if (venuePrice) venuePrice.readOnly = true;
+                            if (venueType) venueType.disabled = true;
+                            
+                            // Hidden input for venue_type when disabled
+                            const hiddenVenueType = document.createElement('input');
+                            hiddenVenueType.type = 'hidden';
+                            hiddenVenueType.name = 'venue_type';
+                            hiddenVenueType.value = 'vendor';
+                            venueType.parentNode.appendChild(hiddenVenueType);
+                        }
+                    } else if (venueData.type === 'external') {
+                        // For external/non-partner venue, set to vendor and show external name
+                        venueType.value = 'vendor';
+                        toggleVenueFields();
+                        
+                        const venueName = document.getElementById('vendor_venue_name');
+                        const venuePrice = document.getElementById('vendor_venue_price');
+                        
+                        if (venueName) venueName.value = venueData.external_name || '';
+                        if (venuePrice) venuePrice.value = venueData.price || '';
+                    }
+                } else {
+                    toggleVenueFields();
+                }
+                
                 handleVendorVenueSelection();
               });
             </script>

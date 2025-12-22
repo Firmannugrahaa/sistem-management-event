@@ -17,14 +17,31 @@ class ClientDashboardController extends Controller
     /**
      * Client Dashboard - Main page with functional blocks
      */
-    public function index(Request $request)
+    public function index()
     {
-        $requests = ClientRequest::where('user_id', Auth::id())
+        $user = Auth::user();
+        
+        // Get all requests for this user
+        $allRequests = ClientRequest::where('user_id', $user->id)
             ->with(['recommendations' => function($q) {
                 $q->latest();
             }])
             ->orderBy('created_at', 'desc')
             ->get();
+
+        // Get the most recent/active client request with full details
+        $activeRequest = ClientRequest::where('user_id', $user->id)
+            ->whereNotIn('detailed_status', ['cancelled', 'completed'])
+            ->latest()
+            ->with([
+                'recommendations' => function($q) {
+                    $q->where('status', '!=', 'draft')->latest();
+                },
+                'recommendations.items.vendor',
+                'event.invoice.payments',
+                'nonPartnerCharges'
+            ])
+            ->first();
 
         // Get pending recommendation items (not yet responded)
         $pendingItems = collect();

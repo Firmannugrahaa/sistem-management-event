@@ -7,11 +7,11 @@
         <div class="mb-8">
             <div class="flex items-center justify-between">
                 <div>
-                    <a href="{{ route('client.requests.show', $clientRequest) }}" class="text-sm text-gray-600 hover:text-gray-900 mb-2 inline-flex items-center">
+                    <a href="{{ route('client.dashboard') }}" class="text-sm text-gray-600 hover:text-gray-900 mb-2 inline-flex items-center">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                         </svg>
-                        Kembali ke Detail Request
+                        Kembali ke Dashboard
                     </a>
                     <h1 class="text-3xl font-bold text-gray-900">Wedding Planner Checklist</h1>
                     <p class="text-gray-600 mt-1">{{ $clientRequest->event_name }}</p>

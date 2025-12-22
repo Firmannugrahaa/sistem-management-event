@@ -178,46 +178,86 @@
 
     <script>
         function confirmSelection() {
-            const isLoggedIn = {{ Auth::check() ? 'true' : 'false' }};
-            const packageId = "{{ $package->id }}";
-            const createUrl = "{{ route('public.booking.form') }}?package_id=" + packageId;
-
-            // If not logged in, show Login/Register prompt
-            if (!isLoggedIn) {
-                Swal.fire({
-                    title: 'Login Diperlukan',
-                    text: "Silahkan login atau daftar akun baru untuk melanjutkan booking paket ini.",
-                    icon: 'info',
-                    showDenyButton: true,
-                    showCancelButton: true,
-                    confirmButtonText: 'Login',
-                    denyButtonText: 'Daftar Akun',
-                    cancelButtonText: 'Batal',
-                    confirmButtonColor: '#012A4A',
-                    denyButtonColor: '#27AE60',
-                    cancelButtonColor: '#d33'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        // Login: Redirect to LOGIN PAGE with return URL
-                        const loginUrl = "{{ route('login') }}?redirect=" + encodeURIComponent(createUrl);
-                        window.location.href = loginUrl;
-                    } else if (result.isDenied) {
-                        // Register: Redirect to Register with return_url
-                        const registerUrl = "{{ route('register') }}?return_url=" + encodeURIComponent(createUrl);
-                        window.location.href = registerUrl;
+            // Package data
+            const packageId = {{ $package->id }};
+            const packageName = "{{ addslashes($package->name) }}";
+            const packagePrice = {{ $package->final_price }};
+            const packageSlug = "{{ $package->slug }}";
+            
+            // Determine event type from package (if available)
+            const eventType = "{{ $package->event_type ?? '' }}";
+            
+            // Save package to localStorage for persistence
+            const selectedPackage = {
+                id: packageId,
+                name: packageName,
+                final_price: packagePrice,
+                slug: packageSlug,
+                selected_at: new Date().toISOString()
+            };
+            localStorage.setItem('preSelectedPackage', JSON.stringify(selectedPackage));
+            
+            // Pre-set booking form data with package mode
+            const bookingFormData = {
+                currentStep: 1,
+                bookingMethod: 'package',
+                selectedPackage: selectedPackage,
+                eventType: eventType,
+                eventDate: '',
+                eventLocation: '',
+                eventNotes: '',
+                serviceSelections: {},
+                nonPartnerVendors: []
+            };
+            localStorage.setItem('bookingFormData', JSON.stringify(bookingFormData));
+            
+            // Clear any previous session alerts
+            sessionStorage.removeItem('activeBookingAlertShown');
+            
+            // Format price
+            const formattedPrice = new Intl.NumberFormat('id-ID').format(packagePrice);
+            
+            // Show soft confirmation toast with options
+            Swal.fire({
+                toast: true,
+                position: 'bottom',
+                icon: 'success',
+                title: `<strong>${packageName} dipilih!</strong>`,
+                html: `
+                    <div class="text-sm text-gray-600 mt-1">
+                        Harga: <strong class="text-green-600">Rp ${formattedPrice}</strong>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Pilihan Anda tersimpan. Lanjutkan ke booking?</p>
+                `,
+                showConfirmButton: true,
+                showCancelButton: true,
+                confirmButtonText: '🚀 Lanjutkan Booking',
+                cancelButtonText: '🔙 Kembali',
+                confirmButtonColor: '#9CAF88',
+                cancelButtonColor: '#6B7280',
+                timer: 10000,
+                timerProgressBar: true,
+                customClass: {
+                    popup: 'rounded-2xl shadow-2xl',
+                    title: 'text-left text-base font-semibold text-gray-800',
+                    htmlContainer: 'text-left',
+                },
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer);
+                    toast.addEventListener('mouseleave', Swal.resumeTimer);
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Check if user has existing event selected
+                    const existingEventId = document.getElementById('existingEventSelect')?.value;
+                    let bookingUrl = "{{ route('public.booking.form') }}";
+                    if (existingEventId) {
+                        bookingUrl += "?existing_event_id=" + existingEventId;
                     }
-                });
-                return;
-            }
-
-            // If already logged in, go directly to booking form
-            // Duplicate checks will be handled by the controller after redirect
-            const existingEventId = document.getElementById('existingEventSelect')?.value;
-            if (existingEventId) {
-                 window.location.href = createUrl + "&existing_event_id=" + existingEventId;
-            } else {
-                 window.location.href = createUrl;
-            }
+                    window.location.href = bookingUrl;
+                }
+                // If cancelled or timer expired, user stays on page - package is still saved
+            });
         }
     </script>
 @endsection

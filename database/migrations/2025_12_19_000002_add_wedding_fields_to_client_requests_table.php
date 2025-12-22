@@ -12,13 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('client_requests', function (Blueprint $table) {
-            // Wedding couple names (optional, can be filled later from dashboard)
-            $table->string('cpp_name')->nullable()->after('message'); // Calon Pengantin Pria
-            $table->string('cpw_name')->nullable()->after('cpp_name'); // Calon Pengantin Wanita
-            $table->boolean('fill_couple_later')->default(false)->after('cpw_name'); // Flag: fill later from dashboard
-            
-            // Store booking confirmation number for tracking
-            $table->string('booking_number')->nullable()->unique()->after('fill_couple_later');
+            if (!Schema::hasColumn('client_requests', 'cpp_name')) {
+                $table->string('cpp_name')->nullable()->after('message');
+            }
+            if (!Schema::hasColumn('client_requests', 'cpw_name')) {
+                $table->string('cpw_name')->nullable()->after('cpp_name');
+            }
+            if (!Schema::hasColumn('client_requests', 'fill_couple_later')) {
+                $table->boolean('fill_couple_later')->default(false)->after('cpw_name');
+            }
+            if (!Schema::hasColumn('client_requests', 'booking_number')) {
+                $table->string('booking_number')->nullable()->unique()->after('fill_couple_later');
+            }
         });
     }
 

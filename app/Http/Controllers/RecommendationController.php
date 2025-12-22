@@ -20,17 +20,29 @@ class RecommendationController extends Controller
     {
         $this->authorize('update', $clientRequest);
 
-        // Get available vendors grouped by category
-        $vendors = Vendor::all()->groupBy('category');
+        // Get available vendors with service type for category filtering
+        $vendorsQuery = Vendor::with('serviceType')->get();
+        
+        // Group by category for display (legacy)
+        $vendors = $vendorsQuery->groupBy('category');
+        
+        // Create flat list with service type for JS filtering
+        $vendorsForJs = $vendorsQuery->map(function($vendor) {
+            return [
+                'id' => $vendor->id,
+                'name' => $vendor->brand_name,
+                'category' => $vendor->serviceType?->name ?? $vendor->category ?? 'Other',
+            ];
+        })->values();
         
         // Define common categories
         $categories = [
             'Venue', 'Catering', 'Decoration', 'Photography', 
-            'Videography', 'Makeup Artist', 'Entertainment', 
-            'Attire', 'Invitation', 'Souvenir', 'Other'
+            'Videography', 'MUA', 'Entertainment', 
+            'Attire', 'Invitation', 'Souvenir', 'WO/Organizer', 'Documentation', 'Other'
         ];
 
-        return view('recommendations.create', compact('clientRequest', 'vendors', 'categories'));
+        return view('recommendations.create', compact('clientRequest', 'vendors', 'vendorsForJs', 'categories'));
     }
 
     /**
@@ -62,7 +74,8 @@ class RecommendationController extends Controller
                 'created_by' => Auth::id(),
                 'title' => $validated['title'],
                 'description' => $validated['description'],
-                'status' => 'draft',
+                'status' => 'sent', // Auto-send so it appears on client dashboard
+                'sent_at' => now(),
                 'total_estimated_budget' => collect($validated['items'])->sum('estimated_price'),
             ]);
 
@@ -78,26 +91,26 @@ class RecommendationController extends Controller
                     'estimated_price' => $item['estimated_price'] ?? 0,
                     'notes' => $item['notes'] ?? null,
                     'status' => 'pending',
+                    'client_response' => 'pending', // Required for client dashboard display
                     'order' => $index,
                 ]);
             }
 
-            // Update Lead Status
-            if ($clientRequest->detailed_status !== 'recommendation_sent') {
-                $clientRequest->detailed_status = 'need_recommendation'; 
-                $clientRequest->save();
-            }
+            // Update Lead Status to recommendation_sent since we auto-send
+            $clientRequest->detailed_status = 'recommendation_sent';
+            $clientRequest->status = 'on_process';
+            $clientRequest->save();
 
             ActivityLog::log(
                 'created_recommendation',
                 $clientRequest,
-                "Recommendation '{$recommendation->title}' created by " . Auth::user()->name
+                "Recommendation '{$recommendation->title}' created and sent by " . Auth::user()->name
             );
 
             DB::commit();
 
             return redirect()->route('client-requests.show', $clientRequest)
-                ->with('success', 'Recommendation draft created successfully.');
+                ->with('success', 'Rekomendasi berhasil dibuat dan dikirim ke client!');
 
         } catch (\Exception $e) {
             DB::rollBack();

@@ -161,11 +161,76 @@ class ClientRequestController extends Controller
     {
         $this->authorize('view', $clientRequest);
         
-        $clientRequest->load(['user', 'assignedTo', 'vendor']);
+        $clientRequest->load([
+            'user', 
+            'assignedTo', 
+            'vendor.serviceType',
+            'recommendations.items.vendor.serviceType',
+            'nonPartnerCharges'
+        ]);
+        
         $staffMembers = User::role(['Admin', 'Staff'])->get();
         $vendors = Vendor::all();
         
-        return view('client-requests.show', compact('clientRequest', 'staffMembers', 'vendors'));
+        // Determine if this is a package booking
+        $isPackageBooking = str_contains($clientRequest->message ?? '', '[Paket:');
+        $packageInfo = null;
+        $packageVendors = collect();
+        
+        if ($isPackageBooking) {
+            preg_match('/\[Paket: (.+?)\]/', $clientRequest->message, $matches);
+            if (!empty($matches[1])) {
+                $packageInfo = \App\Models\EventPackage::where('name', $matches[1])
+                    ->with(['items.vendorCatalogItem.vendor.serviceType', 'items.vendorPackage.vendor.serviceType'])
+                    ->first();
+                    
+                if ($packageInfo) {
+                    foreach ($packageInfo->items as $item) {
+                        $vendor = $item->vendorCatalogItem?->vendor ?? $item->vendorPackage?->vendor;
+                        if ($vendor) {
+                            $packageVendors->push([
+                                'vendor' => $vendor,
+                                'category' => $vendor->serviceType?->name ?? 'Lainnya',
+                                'item_name' => $item->vendorCatalogItem?->name ?? $item->vendorPackage?->name ?? '',
+                                'price' => $item->vendorCatalogItem?->price ?? $item->vendorPackage?->price ?? 0,
+                                'source' => 'package',
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Build vendor summary from recommendations
+        $recommendationVendors = collect();
+        foreach ($clientRequest->recommendations as $rec) {
+            foreach ($rec->items as $item) {
+                $recommendationVendors->push([
+                    'vendor' => $item->vendor,
+                    'category' => $item->category,
+                    'item_name' => $item->vendor?->brand_name ?? $item->external_vendor_name ?? '',
+                    'price' => $item->estimated_price,
+                    'source' => 'recommendation',
+                    'status' => $item->client_response ?? 'pending',
+                    'recommendation_status' => $rec->status,
+                    'notes' => $item->notes,
+                ]);
+            }
+        }
+        
+        // Get service types for category grouping
+        $serviceTypes = \App\Models\ServiceType::orderBy('name')->get();
+        
+        return view('client-requests.show', compact(
+            'clientRequest', 
+            'staffMembers', 
+            'vendors',
+            'isPackageBooking',
+            'packageInfo',
+            'packageVendors',
+            'recommendationVendors',
+            'serviceTypes'
+        ));
     }
 
     /**
@@ -372,10 +437,10 @@ class ClientRequestController extends Controller
                 }
             }
             
-            // Attach Accepted Recommendation Items
+            // Attach Accepted Recommendation Items (approved by client)
             $acceptedItems = \App\Models\RecommendationItem::whereHas('recommendation', function($q) use ($clientRequest) {
                 $q->where('client_request_id', $clientRequest->id);
-            })->where('status', 'accepted')->whereNotNull('vendor_id')->get();
+            })->where('client_response', 'approved')->whereNotNull('vendor_id')->get();
 
             foreach ($acceptedItems as $item) {
                 if (!$event->vendors()->where('vendor_id', $item->vendor_id)->exists()) {
@@ -383,7 +448,7 @@ class ClientRequestController extends Controller
                         'role' => $item->category,
                         'status' => 'confirmed',
                         'source' => 'recommendation',
-                        'agreed_price' => $item->min_price ?? 0 // Use min_price as initial agreed price
+                        'agreed_price' => $item->estimated_price ?? 0
                     ]);
                     
                     // Auto-check checklist items for this vendor

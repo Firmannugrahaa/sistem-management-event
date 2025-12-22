@@ -17,12 +17,28 @@ class PublicBookingController extends Controller
      */
     public function showForm(Request $request)
     {
-        // Get all vendors grouped by service type
-        $serviceTypes = \App\Models\ServiceType::with(['vendors' => function($query) {
-            $query->orderBy('brand_name');
+        // Get only service types that have active vendors (show readiness, not emptiness)
+        $serviceTypes = \App\Models\ServiceType::whereHas('vendors', function($query) {
+            $query->where('is_active', true);
+        })->with(['vendors' => function($query) {
+            $query->where('is_active', true)
+                  ->orderBy('brand_name')
+                  ->with(['catalogItems' => function($q) {
+                      $q->orderBy('price', 'asc')->limit(10);
+                  }, 'packages' => function($q) {
+                      $q->orderBy('price', 'asc')->with('services');
+                  }, 'publishedPortfolios']);
         }])->orderBy('name')->get();
         
-        // Check if package_id is provided
+        // Load all active packages for the new "Natural Flow" booking system
+        $allPackages = \App\Models\EventPackage::where('is_active', true)
+            ->with([
+                'items.vendorCatalogItem.vendor.serviceType',
+                'items.vendorPackage.vendor.serviceType'
+            ])
+            ->get();
+
+        // Check if package_id is provided (legacy/link support)
         $package = null;
         $packageVendors = []; // Map of service_type_id => vendor_id for pre-filling
         
@@ -52,10 +68,21 @@ class PublicBookingController extends Controller
             }
         }
         
-        // Get authenticated user data if available
+        // Get authenticated user data with clientProfile relationship if available
         $user = auth()->user();
+        $activeBooking = null;
         
-        // Check for existing bookings ONLY if user is logged in and package is selected
+        if ($user) {
+            $user->load('clientProfile');
+            
+            // Check for any active booking (pending, in_review, approved, in_progress)
+            $activeBooking = \App\Models\ClientRequest::where('user_id', $user->id)
+                ->whereIn('status', ['pending', 'in_review', 'approved', 'in_progress'])
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+        
+        // Check for existing bookings with legacy package detection
         if ($user && $package) {
             // Get user's existing client requests (bookings)
             $existingBookings = \App\Models\ClientRequest::where('user_id', $user->id)
@@ -108,7 +135,10 @@ class PublicBookingController extends Controller
             'default' => 600000 // Default charge for other categories
         ];
         
-        return view('public.booking-form', compact('serviceTypes', 'package', 'packageVendors', 'user', 'nonPartnerCharges'));
+        // Get company settings for contact info (WhatsApp)
+        $companySettings = \App\Models\CompanySetting::first();
+        
+        return view('public.booking-form', compact('serviceTypes', 'package', 'packageVendors', 'user', 'nonPartnerCharges', 'allPackages', 'companySettings', 'activeBooking'));
     }
 
     /**
@@ -129,6 +159,7 @@ class PublicBookingController extends Controller
             'message' => 'nullable|string',
             'vendor_id' => 'nullable|exists:vendors,id',
             'package_id' => 'nullable|exists:event_packages,id',
+            'service_selections' => 'nullable|array', // NEW: Service-centric format
         ]);
 
         // If package_id is provided, prepend package info to message for tracking
@@ -158,6 +189,15 @@ class PublicBookingController extends Controller
                 'detailed_status' => 'new',
                 'request_source' => 'public_booking_form',
             ]);
+            
+            // NEW: Save service selections to message for admin reference
+            $serviceSelections = $request->input('service_selections', []);
+            if (!empty($serviceSelections)) {
+                $servicesSummary = $this->formatServiceSelectionsSummary($serviceSelections);
+                $clientRequest->update([
+                    'message' => $message . "\n\n--- Layanan Dipilih ---\n" . $servicesSummary
+                ]);
+            }
 
             // Save non-partner vendor charges if any
             $this->saveNonPartnerCharges($request, $clientRequest);
@@ -169,8 +209,10 @@ class PublicBookingController extends Controller
 
         // User belum login - save ke session dan redirect ke register
         $validated['message'] = $message; // Include enhanced message
-        // Also save vendor selections to session for processing after registration
+        // Save vendor selections (both formats) to session for processing after registration
+        $validated['service_selections'] = $request->input('service_selections', []);
         $validated['vendors'] = $request->input('vendors', []);
+        $validated['non_partner_vendors'] = $request->input('non_partner_vendors', []);
         Session::put('pending_booking', $validated);
 
         return redirect()->route('register')
@@ -183,10 +225,32 @@ class PublicBookingController extends Controller
      */
     private function saveNonPartnerCharges(Request $request, ClientRequest $clientRequest): void
     {
+        // Handle new non_partner_vendors array format
+        $nonPartnerVendors = $request->input('non_partner_vendors', []);
+        
+        if (!empty($nonPartnerVendors) && is_array($nonPartnerVendors)) {
+            foreach ($nonPartnerVendors as $vendor) {
+                // Only create if essential fields are present
+                if (!empty($vendor['category']) && !empty($vendor['vendor_name'])) {
+                    NonPartnerVendorCharge::create([
+                        'client_request_id' => $clientRequest->id,
+                        'event_id' => null, // Will be set when event is created
+                        'service_type' => $vendor['category'],
+                        'vendor_name' => $vendor['vendor_name'],
+                        'vendor_contact' => ($vendor['contact_person'] ?? '') . 
+                                          (isset($vendor['phone']) ? ' - ' . $vendor['phone'] : ''),
+                        'notes' => $vendor['notes'] ?? null,
+                        'charge_amount' => $vendor['charge'] ?? 600000, // Default Rp600k
+                    ]);
+                }
+            }
+        }
+        
+        // Legacy support: Handle old vendors[typeId][vendor_id] = 'non-partner' format
         $vendors = $request->input('vendors', []);
         
         foreach ($vendors as $serviceTypeId => $vendorData) {
-            // Check if this is a non-partner vendor selection
+            // Check if this is a non-partner vendor selection (old format)
             if (isset($vendorData['vendor_id']) && $vendorData['vendor_id'] === 'non-partner') {
                 // Get service type name
                 $serviceType = ServiceType::find($serviceTypeId);
@@ -201,7 +265,7 @@ class PublicBookingController extends Controller
                         'vendor_name' => $vendorData['non_partner_name'],
                         'vendor_contact' => $vendorData['non_partner_contact'] ?? null,
                         'notes' => $vendorData['non_partner_notes'] ?? null,
-                        'charge_amount' => $vendorData['non_partner_charge'] ?? 0,
+                        'charge_amount' => $vendorData['non_partner_charge'] ?? 600000,
                     ]);
                 }
             }
@@ -291,5 +355,34 @@ class PublicBookingController extends Controller
                 'message' => 'Terjadi kesalahan. Silakan coba lagi.',
             ], 500);
         }
+    }
+    
+    /**
+     * Format service selections into readable summary for admin
+     */
+    private function formatServiceSelectionsSummary(array $serviceSelections): string
+    {
+        $summary = [];
+        
+        foreach ($serviceSelections as $typeId => $selection) {
+            $line = "• {$selection['category_name']}: {$selection['item_name']} ({$selection['vendor_name']})";
+            
+            // Add qty if applicable  
+            if (isset($selection['qty']) && $selection['qty'] > 1) {
+                $line .= " - {$selection['qty']} unit";
+            }
+            
+            // Add price
+            $line .= " - Rp " . number_format($selection['subtotal'] ?? $selection['price'], 0, ',', '.');
+            
+            // Mark if from package
+            if ($selection['locked'] ?? false) {
+                $line .= " [Paket]";
+            }
+            
+            $summary[] = $line;
+        }
+        
+        return implode("\n", $summary);
     }
 }

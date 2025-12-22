@@ -12,10 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('recommendation_items', function (Blueprint $table) {
-            // Client response tracking for per-item approval
-            $table->enum('client_response', ['pending', 'approved', 'rejected'])->default('pending')->after('notes');
-            $table->text('client_feedback')->nullable()->after('client_response');
-            $table->timestamp('responded_at')->nullable()->after('client_feedback');
+            if (!Schema::hasColumn('recommendation_items', 'client_response')) {
+                $table->enum('client_response', ['pending', 'approved', 'rejected'])->default('pending')->after('notes');
+            }
+            if (!Schema::hasColumn('recommendation_items', 'client_feedback')) {
+                $table->text('client_feedback')->nullable()->after('client_response');
+            }
+            if (!Schema::hasColumn('recommendation_items', 'responded_at')) {
+                $table->timestamp('responded_at')->nullable()->after('client_feedback');
+            }
         });
     }
 

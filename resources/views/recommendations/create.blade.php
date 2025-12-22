@@ -80,102 +80,158 @@
 
 <!-- Template for Item Row -->
 <template id="item-template">
-    <div class="item-row border border-gray-200 rounded-lg p-4 bg-gray-50 relative group transition hover:border-blue-300">
-        <button type="button" onclick="removeItem(this)" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition">
+    <div class="item-row border border-gray-200 rounded-lg p-5 bg-gray-50 relative group transition hover:border-blue-300">
+        <button type="button" onclick="removeItem(this)" class="absolute top-3 right-3 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
         </button>
         
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-            <!-- First Row: Category, Type -->
-            <div class="md:col-span-4">
-                <label class="block text-xs font-medium text-gray-500 mb-1">Category</label>
-                <select name="items[INDEX][category]" class="w-full rounded-md border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white" required>
-                    <option value="">Select Category</option>
-                    @foreach(['Venue', 'Catering', 'Decoration', 'MUA', 'Attire', 'Documentation', 'Entertainment', 'WO/Organizer', 'Souvenir', 'Invitation', 'Other'] as $cat)
-                        <option value="{{ $cat }}">{{ $cat }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="md:col-span-4">
-                 <label class="block text-xs font-medium text-gray-500 mb-1">Recommendation Type</label>
-                 <select name="items[INDEX][recommendation_type]" class="w-full rounded-md border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
-                     <option value="primary">⭐ Utama (Recommended)</option>
-                     <option value="alternative">🔄 Alternatif</option>
-                     <option value="upgrade">💎 Upgrade Option</option>
-                 </select>
-            </div>
-
-             <div class="md:col-span-4">
-                <label class="block text-xs font-medium text-gray-500 mb-1">Est. Price (Rp)</label>
-                <input type="number" name="items[INDEX][estimated_price]" 
-                       class="price-input w-full rounded-md border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
-                       placeholder="0" oninput="calculateTotal()">
-            </div>
-
-            <!-- Second Row: Vendor, Service Name -->
-            <div class="md:col-span-6">
-                <label class="block text-xs font-medium text-gray-500 mb-1">Vendor</label>
-                
-                <!-- Internal Vendor Select -->
-                <div class="internal-vendor-wrapper">
-                    <select name="items[INDEX][vendor_id]" class="vendor-select w-full rounded-md border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white" onchange="handleVendorChange(this)">
-                        <option value="">Select Registered Vendor</option>
-                        <option value="external" class="font-semibold text-blue-600">+ Add External Vendor</option>
-                        <optgroup label="Registered Vendors">
-                            @foreach($vendors as $category => $list)
-                                @foreach($list as $vendor)
-                                    <option value="{{ $vendor->id }}">{{ $vendor->name }} ({{ $category }})</option>
-                                @endforeach
-                            @endforeach
-                        </optgroup>
+        <div class="space-y-4">
+            <!-- Row 1: Category, Recommendation Type -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Kategori Vendor</label>
+                    <select name="items[INDEX][category]" class="category-select w-full rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white" required onchange="handleCategoryChange(this)">
+                        <option value="">Pilih Kategori</option>
+                        @foreach(['Venue', 'Catering', 'Decoration', 'MUA', 'Attire', 'Documentation', 'Entertainment', 'WO/Organizer', 'Souvenir', 'Invitation', 'Other'] as $cat)
+                            <option value="{{ $cat }}">{{ $cat }}</option>
+                        @endforeach
                     </select>
-                    
-                    <!-- Product/Package Quick Select -->
-                    <div class="product-select-wrapper hidden mt-2">
-                        <select class="product-select w-full rounded-md border-gray-200 text-xs text-gray-600 bg-gray-50 focus:ring-blue-500 focus:border-blue-500" onchange="autoFillProduct(this)">
-                            <option value="">-- Auto-fill from Package/Product --</option>
-                        </select>
-                        <p class="text-[10px] text-gray-400 mt-1 ml-1">* Select to auto-fill details below</p>
-                    </div>
                 </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Tipe Rekomendasi</label>
+                    <select name="items[INDEX][recommendation_type]" class="w-full rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
+                        <option value="primary">⭐ Utama (Recommended)</option>
+                        <option value="alternative">🔄 Alternatif</option>
+                        <option value="upgrade">💎 Upgrade Option</option>
+                    </select>
+                </div>
+            </div>
 
+            <!-- Row 2: Vendor Selection -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5">Vendor</label>
+                <div class="internal-vendor-wrapper">
+                    <select name="items[INDEX][vendor_id]" class="vendor-select w-full rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white" onchange="handleVendorChange(this)" disabled>
+                        <option value="">-- Pilih Kategori dulu --</option>
+                    </select>
+                </div>
                 <!-- External Vendor Input (Hidden by default) -->
                 <div class="external-vendor-input hidden mt-2">
                     <div class="flex">
                         <input type="text" name="items[INDEX][external_vendor_name]" 
-                               class="w-full rounded-l-md border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="Enter vendor name manually">
-                         <button type="button" onclick="cancelExternal(this)" class="px-3 bg-gray-100 border border-l-0 border-gray-300 rounded-r-md text-xs text-gray-600 hover:bg-gray-200">
-                            Cancel
+                               class="external-name-input w-full rounded-l-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Nama vendor eksternal...">
+                        <button type="button" onclick="cancelExternal(this)" class="px-4 bg-gray-200 border border-l-0 border-gray-300 rounded-r-lg text-xs text-gray-600 hover:bg-gray-300 font-medium">
+                            Batal
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div class="md:col-span-6">
-                <label class="block text-xs font-medium text-gray-500 mb-1">Package / Service Details</label>
-                <input type="text" name="items[INDEX][service_name]" 
-                       class="w-full rounded-md border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
-                       placeholder="e.g. Platinum Package 300 Pax">
+            <!-- Row 3: Package/Service Selection (Unified) -->
+            <div class="package-service-section hidden">
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5">Paket / Layanan</label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <select class="product-select w-full rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white" onchange="autoFillProduct(this)">
+                            <option value="">Pilih produk/paket vendor</option>
+                        </select>
+                    </div>
+                    <div>
+                        <input type="text" name="items[INDEX][service_name]" 
+                               class="service-name-input w-full rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Atau tulis manual: Platinum Package 300 Pax">
+                    </div>
+                </div>
             </div>
 
-            <!-- Third Row: Reason/Notes -->
-            <div class="md:col-span-12">
-                <label class="block text-xs font-medium text-gray-500 mb-1">Reason for Recommendation</label>
+            <!-- Row 4: Price, Qty (Conditional) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Harga Estimasi (Rp)</label>
+                    <input type="number" name="items[INDEX][estimated_price]" 
+                           class="price-input w-full rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="0" oninput="calculateTotal()">
+                </div>
+                <div class="qty-field hidden">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Jumlah / Qty</label>
+                    <input type="number" name="items[INDEX][quantity]" 
+                           class="qty-input w-full rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="1" min="1" value="1">
+                </div>
+                <div class="qty-field hidden">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Satuan</label>
+                    <input type="text" name="items[INDEX][unit]" 
+                           class="unit-input w-full rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="pax / unit / jam">
+                </div>
+            </div>
+
+            <!-- Row 5: Notes -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5">Alasan Rekomendasi</label>
                 <textarea name="items[INDEX][notes]" rows="2" 
-                       class="w-full rounded-md border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
-                       placeholder="Why do you recommend this vendor? e.g. 'Best value for money', 'Matches your color theme', etc."></textarea>
+                       class="notes-input w-full rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="Kenapa merekomendasikan vendor ini? Contoh: 'Harga terbaik', 'Sesuai tema client'..."></textarea>
+            </div>
+
+            <!-- Add-ons Section (for Venue) -->
+            <div class="addons-section hidden border-t border-gray-200 pt-4 mt-2">
+                <div class="flex justify-between items-center mb-3">
+                    <label class="text-xs font-semibold text-gray-600">Add-ons (Opsional)</label>
+                    <button type="button" onclick="addAddon(this)" class="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center">
+                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Tambah Add-on
+                    </button>
+                </div>
+                <div class="addons-container space-y-2">
+                    <!-- Add-ons will be added here -->
+                </div>
             </div>
         </div>
     </div>
 </template>
 
+<!-- Template for Add-on Row -->
+<template id="addon-template">
+    <div class="addon-row flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200">
+        <select name="items[PARENT_INDEX][addons][ADDON_INDEX][type]" class="addon-type flex-shrink-0 w-40 rounded-md border-gray-300 text-xs focus:ring-blue-500 focus:border-blue-500">
+            <option value="">Pilih Add-on</option>
+            <option value="extra_hour">Extra Hour</option>
+            <option value="extra_room">Ruang Tambahan</option>
+            <option value="facility">Fasilitas Khusus</option>
+            <option value="custom">Lainnya</option>
+        </select>
+        <input type="text" name="items[PARENT_INDEX][addons][ADDON_INDEX][description]" 
+               class="addon-desc flex-1 rounded-md border-gray-300 text-xs focus:ring-blue-500 focus:border-blue-500"
+               placeholder="Deskripsi add-on...">
+        <input type="number" name="items[PARENT_INDEX][addons][ADDON_INDEX][price]" 
+               class="addon-price w-28 rounded-md border-gray-300 text-xs focus:ring-blue-500 focus:border-blue-500"
+               placeholder="Harga" oninput="calculateTotal()">
+        <button type="button" onclick="removeAddon(this)" class="text-red-400 hover:text-red-600 flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+</template>
+
 @push('scripts')
 <script>
+    // Vendor data for category filtering
+    const vendorsData = @json($vendorsForJs);
+    
+    // Categories that require qty
+    const qtyRequiredCategories = ['Catering', 'Souvenir', 'Documentation', 'Invitation'];
+    // Categories that support add-ons
+    const addonSupportCategories = ['Venue'];
+    
     let itemIndex = 0;
+    let addonIndexes = {}; // Track addon indexes per item
 
     function addItem() {
         const container = document.getElementById('items-container');
@@ -185,11 +241,15 @@
         // Replace placeholder INDEX with unique index
         const html = clone.querySelector('.item-row').outerHTML.replace(/INDEX/g, itemIndex);
         
-        // Create a temporary div to hold the HTML string and convert it to DOM node
+        // Create a temporary div and add to container
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
         
-        container.appendChild(tempDiv.firstElementChild);
+        const newRow = tempDiv.firstElementChild;
+        newRow.dataset.itemIndex = itemIndex;
+        
+        container.appendChild(newRow);
+        addonIndexes[itemIndex] = 0;
         itemIndex++;
     }
 
@@ -198,35 +258,90 @@
         calculateTotal();
     }
 
-    function handleVendorChange(select) {
-        const wrapper = select.closest('.md\\:col-span-6');
-        const externalInput = wrapper.querySelector('.external-vendor-input');
-        const internalWrapper = wrapper.querySelector('.internal-vendor-wrapper');
-        const productWrapper = wrapper.querySelector('.product-select-wrapper');
-        const productSelect = wrapper.querySelector('.product-select');
+    function handleCategoryChange(categorySelect) {
+        const row = categorySelect.closest('.item-row');
+        const vendorSelect = row.querySelector('.vendor-select');
+        const qtyFields = row.querySelectorAll('.qty-field');
+        const addonsSection = row.querySelector('.addons-section');
+        const packageSection = row.querySelector('.package-service-section');
+        const selectedCategory = categorySelect.value;
         
-        if (select.value === 'external') {
-            internalWrapper.classList.add('hidden');
-            if(productWrapper) productWrapper.classList.add('hidden');
-            externalInput.classList.remove('hidden');
-            select.value = ''; // Reset select
+        // Reset vendor and hide sections
+        vendorSelect.innerHTML = '<option value="">-- Pilih Kategori dulu --</option>';
+        vendorSelect.disabled = true;
+        packageSection.classList.add('hidden');
+        
+        if (!selectedCategory) {
+            qtyFields.forEach(f => f.classList.add('hidden'));
+            addonsSection.classList.add('hidden');
+            return;
+        }
+        
+        // Enable vendor select
+        vendorSelect.disabled = false;
+        vendorSelect.innerHTML = '<option value="">Pilih Vendor</option>';
+        vendorSelect.innerHTML += '<option value="external" class="font-semibold text-blue-600">+ Tambah Vendor Eksternal</option>';
+        
+        // Filter vendors by category
+        const filteredVendors = vendorsData.filter(v => {
+            return v.category.toLowerCase() === selectedCategory.toLowerCase() ||
+                   (selectedCategory === 'Other' && !['venue', 'catering', 'decoration', 'mua', 'attire', 'documentation', 'entertainment', 'wo/organizer', 'souvenir', 'invitation'].includes(v.category.toLowerCase()));
+        });
+        
+        if (filteredVendors.length > 0) {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = 'Vendor ' + selectedCategory;
             
-            // Enable external input
-            externalInput.querySelector('input').disabled = false;
-        } else if (select.value) {
-            // Load products via AJAX
-            loadVendorProducts(select.value, productSelect, productWrapper);
+            filteredVendors.forEach(vendor => {
+                const option = document.createElement('option');
+                option.value = vendor.id;
+                option.textContent = vendor.name;
+                optgroup.appendChild(option);
+            });
+            
+            vendorSelect.appendChild(optgroup);
+        }
+        
+        // Toggle qty fields based on category
+        if (qtyRequiredCategories.includes(selectedCategory)) {
+            qtyFields.forEach(f => f.classList.remove('hidden'));
         } else {
-            if(productWrapper) productWrapper.classList.add('hidden');
+            qtyFields.forEach(f => f.classList.add('hidden'));
+        }
+        
+        // Toggle addons section based on category
+        if (addonSupportCategories.includes(selectedCategory)) {
+            addonsSection.classList.remove('hidden');
+        } else {
+            addonsSection.classList.add('hidden');
         }
     }
 
-    function loadVendorProducts(vendorId, selectElement, wrapperElement) {
-        if(!selectElement || !wrapperElement) return;
+    function handleVendorChange(select) {
+        const row = select.closest('.item-row');
+        const externalInput = row.querySelector('.external-vendor-input');
+        const internalWrapper = row.querySelector('.internal-vendor-wrapper');
+        const packageSection = row.querySelector('.package-service-section');
+        const productSelect = row.querySelector('.product-select');
+        
+        if (select.value === 'external') {
+            internalWrapper.classList.add('hidden');
+            packageSection.classList.add('hidden');
+            externalInput.classList.remove('hidden');
+            select.value = '';
+        } else if (select.value) {
+            // Show package section and load products
+            packageSection.classList.remove('hidden');
+            loadVendorProducts(select.value, productSelect);
+        } else {
+            packageSection.classList.add('hidden');
+        }
+    }
 
-        // Clear previous options
-        selectElement.innerHTML = '<option value="">Loading packages...</option>';
-        wrapperElement.classList.remove('hidden');
+    function loadVendorProducts(vendorId, selectElement) {
+        if(!selectElement) return;
+
+        selectElement.innerHTML = '<option value="">Loading...</option>';
         selectElement.disabled = true;
 
         fetch(`/vendors/${vendorId}/offerings`)
@@ -235,24 +350,21 @@
                 return response.json();
             })
             .then(data => {
-                selectElement.innerHTML = '<option value="">-- Auto-fill from Package/Product --</option>';
+                selectElement.innerHTML = '<option value="">Pilih produk/paket vendor</option>';
                 
                 if (data.length === 0) {
-                     const option = document.createElement('option');
-                     option.textContent = 'No packages found';
-                     option.disabled = true;
-                     selectElement.appendChild(option);
+                    const option = document.createElement('option');
+                    option.textContent = 'Tidak ada produk tersedia';
+                    option.disabled = true;
+                    selectElement.appendChild(option);
                 } else {
                     data.forEach(item => {
                         const option = document.createElement('option');
                         option.value = item.id;
                         option.textContent = item.name + ' - Rp ' + new Intl.NumberFormat('id-ID').format(item.price);
-                        
-                        // Store data attributes
                         option.dataset.name = item.name;
                         option.dataset.price = item.price;
                         option.dataset.desc = item.description || '';
-                        
                         selectElement.appendChild(option);
                     });
                 }
@@ -260,7 +372,7 @@
             })
             .catch(error => {
                 console.error('Error loading products:', error);
-                selectElement.innerHTML = '<option value="">Failed to load packages</option>';
+                selectElement.innerHTML = '<option value="">Gagal memuat produk</option>';
             });
     }
 
@@ -269,40 +381,65 @@
         if (!option.value) return;
 
         const row = select.closest('.item-row');
-        const nameInput = row.querySelector('input[name*="[service_name]"]');
+        const nameInput = row.querySelector('.service-name-input');
         const priceInput = row.querySelector('.price-input');
-        const notesInput = row.querySelector('textarea[name*="[notes]"]');
+        const notesInput = row.querySelector('.notes-input');
 
         if (nameInput) nameInput.value = option.dataset.name || '';
         
         if (priceInput) {
-             priceInput.value = option.dataset.price || '';
-             // Trigger change for total calculation
-             calculateTotal(); 
+            priceInput.value = option.dataset.price || '';
+            calculateTotal(); 
         }
         
-        if (notesInput && !notesInput.value) { // Only fill notes if empty
+        if (notesInput && !notesInput.value) {
             notesInput.value = option.dataset.desc || '';
         }
     }
 
     function cancelExternal(btn) {
-        const wrapper = btn.closest('.md\\:col-span-6');
-        const externalInput = wrapper.querySelector('.external-vendor-input');
-        const internalWrapper = wrapper.querySelector('.internal-vendor-wrapper');
+        const row = btn.closest('.item-row');
+        const externalInput = row.querySelector('.external-vendor-input');
+        const internalWrapper = row.querySelector('.internal-vendor-wrapper');
         
         externalInput.classList.add('hidden');
         internalWrapper.classList.remove('hidden');
+        externalInput.querySelector('.external-name-input').value = '';
+    }
+
+    function addAddon(btn) {
+        const row = btn.closest('.item-row');
+        const itemIdx = row.dataset.itemIndex;
+        const container = row.querySelector('.addons-container');
+        const template = document.getElementById('addon-template');
         
-        // Disable external input so it doesn't submit
-        externalInput.querySelector('input').value = '';
+        const addonIdx = addonIndexes[itemIdx] || 0;
+        const html = template.content.cloneNode(true).querySelector('.addon-row').outerHTML
+            .replace(/PARENT_INDEX/g, itemIdx)
+            .replace(/ADDON_INDEX/g, addonIdx);
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        container.appendChild(tempDiv.firstElementChild);
+        
+        addonIndexes[itemIdx] = addonIdx + 1;
+    }
+
+    function removeAddon(btn) {
+        btn.closest('.addon-row').remove();
+        calculateTotal();
     }
 
     function calculateTotal() {
-        const inputs = document.querySelectorAll('.price-input');
         let total = 0;
         
-        inputs.forEach(input => {
+        // Sum item prices
+        document.querySelectorAll('.price-input').forEach(input => {
+            total += Number(input.value) || 0;
+        });
+        
+        // Sum addon prices
+        document.querySelectorAll('.addon-price').forEach(input => {
             total += Number(input.value) || 0;
         });
         

@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\Vendor;
 use App\Models\Venue;
 use App\Models\EventPackage;
+use App\Models\RecommendationItem;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -55,8 +56,13 @@ class EventController extends Controller
                                 ->get();
 
         $clientRequest = null;
+        $venueData = null;
+        
         if ($request->has('client_request_id')) {
             $clientRequest = ClientRequest::findOrFail($request->client_request_id);
+            
+            // Extract venue data from client's booking
+            $venueData = $this->extractVenueFromClientRequest($clientRequest);
         }
 
         $package = null;
@@ -64,7 +70,7 @@ class EventController extends Controller
             $package = EventPackage::with('items.vendorCatalogItem', 'items.vendorPackage')->find($request->package_id);
         }
 
-        return view('events.create', compact('venues', 'vendorVenues', 'clientRequest', 'package'));
+        return view('events.create', compact('venues', 'vendorVenues', 'clientRequest', 'package', 'venueData'));
     }
 
     /**
@@ -168,6 +174,7 @@ class EventController extends Controller
                     'agreed_price' => $validated['vendor_venue_price'] ?? 0,
                     'contract_details' => "Venue: " . ($validated['vendor_venue_name'] ?? 'Vendor Venue'),
                     'status' => 'Confirmed',
+                    'source' => 'venue_selection',
                 ]);
                 
                 // Auto-check checklist items for venue vendor
@@ -177,12 +184,47 @@ class EventController extends Controller
                 }
             }
 
-            // 5. Transfer non-partner vendor charges from ClientRequest to Event
+            // 5. Attach ALL vendors from ClientRequest recommendations
             if ($clientRequestId) {
-                $clientRequest = ClientRequest::find($clientRequestId);
-                if ($clientRequest && $clientRequest->nonPartnerCharges) {
-                    foreach ($clientRequest->nonPartnerCharges as $charge) {
-                        $charge->update(['event_id' => $event->id]);
+                $clientRequest = ClientRequest::with(['recommendations.items.vendor'])->find($clientRequestId);
+                
+                if ($clientRequest) {
+                    // Get all accepted/pending recommendation items with vendors
+                    foreach ($clientRequest->recommendations as $recommendation) {
+                        foreach ($recommendation->items as $item) {
+                            // Skip if no vendor (external vendor) or already attached (venue)
+                            if (!$item->vendor_id) {
+                                continue;
+                            }
+                            
+                            // Skip if this vendor was already attached as venue
+                            if ($validated['venue_type'] === 'vendor' 
+                                && $validated['vendor_venue_id'] == $item->vendor_id) {
+                                continue;
+                            }
+                            
+                            // Check if vendor is not already attached to event
+                            if (!$event->vendors()->where('vendor_id', $item->vendor_id)->exists()) {
+                                $event->vendors()->attach($item->vendor_id, [
+                                    'agreed_price' => $item->estimated_price ?? 0,
+                                    'contract_details' => $item->service_name ?? $item->category ?? 'Vendor Service',
+                                    'status' => $item->status === 'accepted' ? 'Confirmed' : 'Negotiation',
+                                    'source' => $item->status === 'accepted' ? 'recommendation' : 'client_selection',
+                                ]);
+                                
+                                // Auto-check checklist items for this vendor
+                                if ($item->vendor && $item->status === 'accepted') {
+                                    \App\Services\ChecklistVendorMappingService::autoCheckItems($event->id, $item->vendor);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Also transfer non-partner vendor charges
+                    if ($clientRequest->nonPartnerCharges) {
+                        foreach ($clientRequest->nonPartnerCharges as $charge) {
+                            $charge->update(['event_id' => $event->id]);
+                        }
                     }
                 }
             }
@@ -205,13 +247,96 @@ class EventController extends Controller
     {
         $this->authorize('view', $event);
 
-        $event->load('guests.ticket', 'vendors', 'crews.user', 'vendorItems.itemable');
+        $event->load([
+            'guests.ticket', 
+            'vendors.serviceType', 
+            'crews.user', 
+            'vendorItems.itemable',
+            'clientRequest.recommendations.items.vendor',
+            'clientRequest.nonPartnerCharges'
+        ]);
 
         $all_vendors = Vendor::orderBy('brand_name')->get();
-        // Assuming all users can be crew for now, or filter by role if needed
         $all_users = \App\Models\User::orderBy('name')->get();
         
-        return view('events.show', compact('event', 'all_vendors', 'all_users'));
+        // Build comprehensive vendor summary
+        $vendorSummary = $this->buildVendorSummary($event);
+        
+        return view('events.show', compact('event', 'all_vendors', 'all_users', 'vendorSummary'));
+    }
+    
+    /**
+     * Build comprehensive vendor summary for event detail
+     */
+    private function buildVendorSummary(Event $event): array
+    {
+        $summary = [
+            'vendors' => [],
+            'external_vendors' => [],
+            'non_partner_charges' => [],
+            'total' => 0
+        ];
+        
+        // 1. Attached vendors (from package, recommendation, manual)
+        foreach ($event->vendors as $vendor) {
+            $vendorData = [
+                'id' => $vendor->id,
+                'name' => $vendor->brand_name ?? $vendor->name,
+                'category' => $vendor->serviceType?->name ?? $vendor->category ?? 'Lainnya',
+                'source' => $vendor->pivot->source ?? 'manual',
+                'agreed_price' => $vendor->pivot->agreed_price ?? 0,
+                'status' => $vendor->pivot->status ?? 'pending',
+                'items' => [],
+                'subtotal' => $vendor->pivot->agreed_price ?? 0
+            ];
+            
+            // Get vendor items/add-ons
+            $vendorItems = $event->vendorItems()->where('vendor_id', $vendor->id)->get();
+            foreach ($vendorItems as $item) {
+                $itemPrice = $item->price * $item->quantity;
+                $vendorData['items'][] = [
+                    'name' => $item->itemable?->name ?? 'Item',
+                    'description' => $item->notes,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->price,
+                    'total_price' => $itemPrice
+                ];
+                // Note: items might already be included in agreed_price, check your business logic
+            }
+            
+            $summary['vendors'][] = $vendorData;
+            $summary['total'] += $vendorData['subtotal'];
+        }
+        
+        // 2. External vendors from recommendations 
+        if ($event->clientRequest) {
+            foreach ($event->clientRequest->recommendations as $rec) {
+                foreach ($rec->items as $item) {
+                    if ($item->client_response === 'approved' && !$item->vendor_id && $item->external_vendor_name) {
+                        $extData = [
+                            'name' => $item->external_vendor_name,
+                            'category' => $item->category,
+                            'price' => $item->estimated_price ?? 0,
+                            'notes' => $item->notes
+                        ];
+                        $summary['external_vendors'][] = $extData;
+                        $summary['total'] += $extData['price'];
+                    }
+                }
+            }
+            
+            // 3. Non-partner charges
+            foreach ($event->clientRequest->nonPartnerCharges ?? [] as $charge) {
+                $chargeData = [
+                    'description' => $charge->description,
+                    'amount' => $charge->amount
+                ];
+                $summary['non_partner_charges'][] = $chargeData;
+                $summary['total'] += $chargeData['amount'];
+            }
+        }
+        
+        return $summary;
     }
 
     /**
@@ -416,5 +541,106 @@ class EventController extends Controller
         }
 
         return back()->with('success', "Status vendor berhasil diubah menjadi {$request->status}.");
+    }
+
+    /**
+     * Extract venue data from client request based on priority:
+     * 1. Package venue (read-only)
+     * 2. Accepted recommendation venue
+     * 3. Manual/external venue selection
+     */
+    private function extractVenueFromClientRequest(ClientRequest $clientRequest): ?array
+    {
+        // Priority 1: From Event Package
+        if ($clientRequest->event_package_id) {
+            $package = EventPackage::with(['items.vendorCatalogItem.vendor', 'items.vendorPackage.vendor'])
+                ->find($clientRequest->event_package_id);
+            
+            if ($package) {
+                foreach ($package->items as $item) {
+                    // Check vendorCatalogItem first
+                    $vendor = $item->vendorCatalogItem?->vendor;
+                    
+                    // Fallback to vendorPackage
+                    if (!$vendor && $item->vendorPackage) {
+                        $vendor = $item->vendorPackage->vendor;
+                    }
+                    
+                    if ($vendor && strtolower($vendor->category ?? '') === 'venue') {
+                        return [
+                            'type' => 'vendor',
+                            'vendor_id' => $vendor->id,
+                            'vendor_name' => $vendor->brand_name ?? $vendor->name ?? 'Venue',
+                            'price' => $item->unit_price ?? $item->total_price ?? 0,
+                            'source' => 'package',
+                            'read_only' => true,
+                        ];
+                    }
+                }
+            }
+        }
+        
+        // Priority 2: From accepted Recommendation (partner vendor)
+        $acceptedVenueItem = RecommendationItem::whereHas('recommendation', function($q) use ($clientRequest) {
+            $q->where('client_request_id', $clientRequest->id);
+        })
+        ->where(function($q) {
+            $q->where('category', 'Venue')
+              ->orWhere('category', 'venue')
+              ->orWhere('category', 'VENUE');
+        })
+        ->where('status', 'accepted')
+        ->with('vendor')
+        ->first();
+        
+        if ($acceptedVenueItem) {
+            // Partner vendor venue
+            if ($acceptedVenueItem->vendor) {
+                return [
+                    'type' => 'vendor',
+                    'vendor_id' => $acceptedVenueItem->vendor->id,
+                    'vendor_name' => $acceptedVenueItem->vendor->brand_name ?? $acceptedVenueItem->vendor->name ?? 'Venue',
+                    'price' => $acceptedVenueItem->estimated_price ?? 0,
+                    'source' => 'recommendation',
+                    'read_only' => false,
+                ];
+            }
+            
+            // External/non-partner venue
+            if ($acceptedVenueItem->external_vendor_name) {
+                return [
+                    'type' => 'external',
+                    'external_name' => $acceptedVenueItem->external_vendor_name,
+                    'price' => $acceptedVenueItem->estimated_price ?? 0,
+                    'source' => 'manual',
+                    'read_only' => false,
+                ];
+            }
+        }
+        
+        // Priority 3: Check for pending venue recommendations (client's own selection)
+        $pendingVenueItem = RecommendationItem::whereHas('recommendation', function($q) use ($clientRequest) {
+            $q->where('client_request_id', $clientRequest->id);
+        })
+        ->where(function($q) {
+            $q->where('category', 'Venue')
+              ->orWhere('category', 'venue')
+              ->orWhere('category', 'VENUE');
+        })
+        ->with('vendor')
+        ->first();
+        
+        if ($pendingVenueItem && $pendingVenueItem->vendor) {
+            return [
+                'type' => 'vendor',
+                'vendor_id' => $pendingVenueItem->vendor->id,
+                'vendor_name' => $pendingVenueItem->vendor->brand_name ?? $pendingVenueItem->vendor->name ?? 'Venue',
+                'price' => $pendingVenueItem->estimated_price ?? 0,
+                'source' => 'client_selection',
+                'read_only' => false,
+            ];
+        }
+        
+        return null;
     }
 }

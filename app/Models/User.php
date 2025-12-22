@@ -67,6 +67,11 @@ class User extends Authenticatable
     {
         return $this->hasOne(ClientProfile::class);
     }
+    
+    public function clientRequests(): HasMany
+    {
+        return $this->hasMany(ClientRequest::class);
+    }
 
     public function notifications()
     {

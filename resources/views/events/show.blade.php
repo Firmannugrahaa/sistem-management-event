@@ -240,149 +240,160 @@
           </div>
         </div>
 
-        {{-- DAFTAR VENDOR YANG DITUGASKAN --}}
+        {{-- DAFTAR VENDOR YANG DITUGASKAN - ENHANCED --}}
         <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
           <div class="p-6 text-gray-900 dark:text-gray-100">
-            <h3 class="text-lg font-bold mb-4">Vendor Ditugaskan</h3>
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-lg font-bold flex items-center">
+                <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+                Vendor Ditugaskan
+              </h3>
+              <div class="text-right">
+                <p class="text-sm text-gray-500">Total Estimasi</p>
+                <p class="text-xl font-bold text-green-600">Rp {{ number_format($vendorSummary['total'], 0, ',', '.') }}</p>
+              </div>
+            </div>
 
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead>
-                <tr>
-                  <th class="px-6 py-3 text-left ...">Nama Vendor</th>
-                  <th class="px-6 py-3 text-left ...">Kategori</th>
-                  <th class="px-6 py-3 text-left ...">Harga Sepakat</th>
-                  <th class="px-6 py-3 text-left ...">Sumber</th>
-                  <th class="px-6 py-3 text-left ...">Status</th>
-                  <th class="px-6 py-3 text-right ...">Aksi</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                @forelse ($event->vendors as $vendor)
-                @php
-                    // Get items for this vendor
-                    $vendorItems = $event->vendorItems()->where('vendor_id', $vendor->id)->get();
-                @endphp
-                <tr x-data="{ expanded: false }" class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center">
-                      @if($vendorItems->count() > 0)
-                        <button @click="expanded = !expanded" class="mr-2 text-gray-500 hover:text-gray-700">
-                          <svg x-show="!expanded" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                          </svg>
-                          <svg x-show="expanded" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                          </svg>
-                        </button>
-                      @endif
-                      <span class="font-medium">{{ $vendor->name }}</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4">{{ $vendor->category }}</td>
-                  {{-- Ambil data pivot --}}
-                  <td class="px-6 py-4">Rp {{ number_format($vendor->pivot->agreed_price, 0, ',', '.') }}</td>
-                  <td class="px-6 py-4">
-                    @php
-                        $source = $vendor->pivot->source ?? 'custom';
-                        $badges = [
+            {{-- Partner Vendors --}}
+            @if(count($vendorSummary['vendors']) > 0)
+            <div class="space-y-4 mb-6">
+              @foreach ($vendorSummary['vendors'] as $vendor)
+              <div class="border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:border-blue-300 transition bg-white dark:bg-gray-750" x-data="{ expanded: false }">
+                {{-- Vendor Header --}}
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div class="flex items-center gap-3">
+                    @if(count($vendor['items']) > 0)
+                    <button @click="expanded = !expanded" class="text-gray-400 hover:text-blue-600 transition">
+                      <svg x-show="!expanded" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                      </svg>
+                      <svg x-show="expanded" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                      </svg>
+                    </button>
+                    @endif
+                    <div>
+                      <h4 class="font-semibold text-gray-900 dark:text-white">{{ $vendor['name'] }}</h4>
+                      <div class="flex items-center gap-2 mt-1">
+                        <span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">{{ $vendor['category'] }}</span>
+                        @php
+                          $sourceColors = [
                             'package' => 'bg-purple-100 text-purple-800',
                             'recommendation' => 'bg-green-100 text-green-800',
-                            'custom' => 'bg-gray-100 text-gray-800',
-                            'client_choice' => 'bg-blue-100 text-blue-800'
-                        ];
-                        $labels = [
-                            'package' => 'Paket',
-                            'recommendation' => 'Rekomendasi',
-                            'custom' => 'Manual',
-                            'client_choice' => 'Pilihan Client'
-                        ];
-                    @endphp
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $badges[$source] ?? 'bg-gray-100' }}">
-                        {{ $labels[$source] ?? ucfirst($source) }}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4">{{ $vendor->pivot->status }}</td>
-                  <td class="px-6 py-4 text-right">
-                    {{-- Tombol Kelola Item (New) --}}
-                    <x-secondary-button tag="a" :href="route('events.vendor-items.index', [$event, $vendor])" class="mr-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200">
-                      Kelola Item
-                    </x-secondary-button>
-
-                    {{-- Tombol Edit Vendor --}}
-                    <x-secondary-button tag="a" :href="route('vendors.edit', $vendor)" class="mr-2">
-                      Edit Vendor
-                    </x-secondary-button>
-
-                    {{-- Tombol Lepas Vendor dengan konfirmasi modal --}}
-                    <button 
-                      @click="document.dispatchEvent(new CustomEvent('show-alert-detach-vendor-{{ $vendor->id }}'))"
-                      class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 inline-block"
-                    >
-                      Lepas
-                    </button>
-
-                    {{-- Modal Konfirmasi Lepas Vendor --}}
-                    <x-alert-modal 
-                        id="detach-vendor-{{ $vendor->id }}" 
-                        title="Detach Vendor" 
-                        message="Yakin lepas vendor {{ $vendor->name }} dari event ini? This action cannot be undone." 
-                        type="danger"
-                        action="document.getElementById('detach-form-vendor-{{ $vendor->id }}').submit()"
-                        cancel=""
-                    />
-
-                    {{-- Form tersembunyi untuk aksi lepas vendor --}}
-                    <form id="detach-form-vendor-{{ $vendor->id }}" action="{{ route('events.detach-vendor', [$event, $vendor]) }}" method="POST" class="hidden">
-                      @csrf
-                      @method('POST')
-                    </form>
-                  </td>
-                </tr>
-                
-                {{-- Expandable Detail Row --}}
-                @if($vendorItems->count() > 0)
-                <tr x-show="expanded" x-collapse class="bg-gray-50 dark:bg-gray-800">
-                  <td colspan="6" class="px-6 py-4">
-                    <div class="ml-12 space-y-3">
-                      <h4 class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3">📋 Detail Layanan / Produk:</h4>
-                      <div class="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                        <table class="min-w-full text-sm">
-                          <thead>
-                            <tr class="border-b border-gray-200 dark:border-gray-600">
-                              <th class="text-left py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Nama Item</th>
-                              <th class="text-left py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Qty</th>
-                              <th class="text-left py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Harga</th>
-                              <th class="text-left py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Catatan</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            @foreach($vendorItems as $item)
-                            <tr class="border-b border-gray-100 dark:border-gray-700 last:border-0">
-                              <td class="py-2 px-3">
-                                <span class="font-medium">{{ $item->itemable->name ?? 'N/A' }}</span>
-                                @if($item->itemable && method_exists($item->itemable, 'description'))
-                                  <p class="text-xs text-gray-500 mt-1">{{ Str::limit($item->itemable->description, 80) }}</p>
-                                @endif
-                              </td>
-                              <td class="py-2 px-3">{{ $item->quantity }}</td>
-                              <td class="py-2 px-3">Rp {{ number_format($item->price, 0, ',', '.') }}</td>
-                              <td class="py-2 px-3 text-xs text-gray-500">{{ $item->notes }}</td>
-                            </tr>
-                            @endforeach
-                          </tbody>
-                        </table>
+                            'client_choice' => 'bg-blue-100 text-blue-800',
+                            'manual' => 'bg-gray-100 text-gray-800'
+                          ];
+                          $sourceLabels = [
+                            'package' => '📦 Paket',
+                            'recommendation' => '💡 Rekomendasi',
+                            'client_choice' => '👤 Pilihan Client',
+                            'manual' => '✏️ Manual'
+                          ];
+                        @endphp
+                        <span class="px-2 py-0.5 text-xs font-medium rounded {{ $sourceColors[$vendor['source']] ?? 'bg-gray-100 text-gray-800' }}">
+                          {{ $sourceLabels[$vendor['source']] ?? ucfirst($vendor['source']) }}
+                        </span>
+                        <span class="px-2 py-0.5 text-xs font-medium rounded {{ $vendor['status'] === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                          {{ ucfirst($vendor['status']) }}
+                        </span>
                       </div>
                     </div>
-                  </td>
-                </tr>
+                  </div>
+                  <div class="text-right md:min-w-[140px]">
+                    <p class="text-lg font-bold text-gray-900 dark:text-white">Rp {{ number_format($vendor['subtotal'], 0, ',', '.') }}</p>
+                    @if(count($vendor['items']) > 0)
+                    <p class="text-xs text-gray-500">{{ count($vendor['items']) }} item/add-on</p>
+                    @endif
+                  </div>
+                </div>
+
+                {{-- Expandable Items/Add-ons --}}
+                @if(count($vendor['items']) > 0)
+                <div x-show="expanded" x-collapse class="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                  <p class="text-xs font-semibold text-gray-500 mb-2">📋 Detail Layanan / Add-ons:</p>
+                  <div class="bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden">
+                    <table class="min-w-full text-sm">
+                      <thead>
+                        <tr class="border-b border-gray-200 dark:border-gray-700">
+                          <th class="text-left py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Item</th>
+                          <th class="text-center py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Qty</th>
+                          <th class="text-right py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Harga</th>
+                          <th class="text-right py-2 px-3 font-medium text-gray-600 dark:text-gray-400">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @foreach($vendor['items'] as $item)
+                        <tr class="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                          <td class="py-2 px-3">
+                            <span class="font-medium">{{ $item['name'] }}</span>
+                            @if($item['description'])
+                            <p class="text-xs text-gray-500 mt-0.5">{{ $item['description'] }}</p>
+                            @endif
+                          </td>
+                          <td class="py-2 px-3 text-center">{{ $item['quantity'] }}</td>
+                          <td class="py-2 px-3 text-right">Rp {{ number_format($item['unit_price'], 0, ',', '.') }}</td>
+                          <td class="py-2 px-3 text-right font-medium">Rp {{ number_format($item['total_price'], 0, ',', '.') }}</td>
+                        </tr>
+                        @endforeach
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
                 @endif
-                @empty
-                <tr>
-                  <td colspan="5" class="px-6 py-4 text-center">Belum ada vendor ditugaskan.</td>
-                </tr>
-                @endforelse
-              </tbody>
-            </table>
+              </div>
+              @endforeach
+            </div>
+            @else
+            <p class="text-gray-500 text-center py-8">Belum ada vendor ditugaskan.</p>
+            @endif
+
+            {{-- External Vendors --}}
+            @if(count($vendorSummary['external_vendors']) > 0)
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+              <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">🏪 Vendor Eksternal</h4>
+              <div class="space-y-2">
+                @foreach($vendorSummary['external_vendors'] as $ext)
+                <div class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div>
+                    <span class="font-medium text-gray-900 dark:text-white">{{ $ext['name'] }}</span>
+                    <span class="ml-2 px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-medium rounded">{{ $ext['category'] }}</span>
+                    @if($ext['notes'])
+                    <p class="text-xs text-gray-500 mt-1">{{ $ext['notes'] }}</p>
+                    @endif
+                  </div>
+                  <span class="font-semibold text-gray-900 dark:text-white">Rp {{ number_format($ext['price'], 0, ',', '.') }}</span>
+                </div>
+                @endforeach
+              </div>
+            </div>
+            @endif
+
+            {{-- Non-Partner Charges --}}
+            @if(count($vendorSummary['non_partner_charges']) > 0)
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+              <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">💳 Biaya Tambahan</h4>
+              <div class="space-y-2">
+                @foreach($vendorSummary['non_partner_charges'] as $charge)
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <span class="text-gray-700 dark:text-gray-300">{{ $charge['description'] }}</span>
+                  <span class="font-semibold text-gray-900 dark:text-white">Rp {{ number_format($charge['amount'], 0, ',', '.') }}</span>
+                </div>
+                @endforeach
+              </div>
+            </div>
+            @endif
+
+            {{-- Summary Footer --}}
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+              <div class="flex justify-end">
+                <div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 min-w-[200px]">
+                  <p class="text-sm text-gray-600 dark:text-gray-400">Total Semua Vendor</p>
+                  <p class="text-2xl font-bold text-green-600 dark:text-green-400">Rp {{ number_format($vendorSummary['total'], 0, ',', '.') }}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

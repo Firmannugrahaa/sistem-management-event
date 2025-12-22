@@ -26,6 +26,46 @@
                 <div>
                     <h1 class="text-2xl font-semibold text-gray-900">Detail Client Request</h1>
                     <p class="mt-1 text-sm text-gray-600">Request ID: #{{ $clientRequest->id }}</p>
+                    
+                    <!-- Wedding Couple Info - Display in Header for Wedding/Engagement -->
+                    @if(in_array($clientRequest->event_type, ['Wedding', 'Engagement']) && ($clientRequest->cpp_name || $clientRequest->cpw_name))
+                    <div class="mt-4 p-4 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg border border-pink-100">
+                        <div class="flex items-center space-x-6">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide">Calon Pengantin Pria</p>
+                                    <p class="font-semibold text-gray-900">{{ $clientRequest->cpp_name ?: '-' }}</p>
+                                </div>
+                            </div>
+                            <div class="text-2xl text-pink-300">&</div>
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center mr-3">
+                                    <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide">Calon Pengantin Wanita</p>
+                                    <p class="font-semibold text-gray-900">{{ $clientRequest->cpw_name ?: '-' }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @elseif(in_array($clientRequest->event_type, ['Wedding', 'Engagement']) && $clientRequest->fill_couple_later)
+                    <div class="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <p class="text-sm text-yellow-700 flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            <strong class="mr-1">Catatan:</strong> Client memilih untuk mengisi data pasangan nanti.
+                        </p>
+                    </div>
+                    @endif
                 </div>
                 <div class="flex items-center space-x-3">
                     <span class="px-4 py-2 text-sm font-medium rounded-full {{ $clientRequest->status_badge_color }}">
@@ -142,9 +182,35 @@
                         </div>
                         @endif
                         <div>
+                            <dt class="text-sm font-medium text-gray-500">Tipe Booking</dt>
+                            <dd class="mt-1">
+                                @if($isPackageBooking && $packageInfo)
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                        </svg>
+                                        Paket: {{ $packageInfo->name }}
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                        Custom Vendor Selection
+                                    </span>
+                                @endif
+                            </dd>
+                        </div>
+                        <div>
                             <dt class="text-sm font-medium text-gray-500">Sumber Request</dt>
                             <dd class="mt-1 text-base text-gray-900 capitalize">{{ str_replace('_', ' ', $clientRequest->request_source) }}</dd>
                         </div>
+                        @if($clientRequest->booking_number)
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Booking Number</dt>
+                            <dd class="mt-1 text-base text-gray-900 font-mono">{{ $clientRequest->booking_number }}</dd>
+                        </div>
+                        @endif
                     </dl>
 
                     @if($clientRequest->message)
@@ -155,26 +221,179 @@
                     @endif
                 </div>
 
-                </div>
-
-                <!-- Recommendations Section -->
+                <!-- VENDOR SECTION -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-semibold text-gray-900 flex items-center">
                             <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                             </svg>
-                            Recommendations
+                            @if($isPackageBooking && $packageInfo)
+                                Vendor Berdasarkan Paket
+                            @else
+                                Vendor Pilihan / Rekomendasi
+                            @endif
                         </h2>
                         @if(auth()->user()->hasAnyRole(['SuperUser', 'Owner', 'Admin']))
-                        <a href="{{ route('recommendations.create', $clientRequest) }}" class="text-sm px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium transition">
-                            + Create New
+                        <a href="{{ route('recommendations.create', $clientRequest) }}" class="text-sm px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 font-medium transition flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Berikan Rekomendasi
                         </a>
                         @endif
                     </div>
 
-                    @if($clientRequest->recommendations && $clientRequest->recommendations->count() > 0)
-                        <div class="space-y-3">
+                    @if($isPackageBooking && $packageInfo)
+                    <!-- Info: Vendor dari Paket -->
+                    <div class="bg-purple-50 border border-purple-100 rounded-lg p-3 mb-4">
+                        <p class="text-sm text-purple-700 flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Vendor-vendor di bawah ini berasal dari paket <strong class="mx-1">{{ $packageInfo->name }}</strong> yang dipilih client.
+                        </p>
+                    </div>
+                    @endif
+
+                    @php
+                        // Group vendors by category
+                        $allVendors = collect();
+                        
+                        // Add package vendors
+                        if($isPackageBooking && $packageVendors->count() > 0) {
+                            $allVendors = $allVendors->merge($packageVendors);
+                        }
+                        
+                        // Add client's single vendor choice if exists
+                        if($clientRequest->vendor) {
+                            $allVendors->push([
+                                'vendor' => $clientRequest->vendor,
+                                'category' => $clientRequest->vendor->serviceType?->name ?? 'Lainnya',
+                                'item_name' => $clientRequest->vendor->brand_name ?? $clientRequest->vendor->name,
+                                'price' => 0,
+                                'source' => 'client_choice',
+                            ]);
+                        }
+                        
+                        // Add recommendation vendors
+                        if($recommendationVendors->count() > 0) {
+                            $allVendors = $allVendors->merge($recommendationVendors);
+                        }
+                        
+                        // Group by category
+                        $vendorsByCategory = $allVendors->groupBy('category');
+                    @endphp
+
+                    @if($allVendors->count() > 0)
+                        <div class="space-y-6">
+                            @foreach($vendorsByCategory as $category => $categoryVendors)
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3 flex items-center">
+                                    <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                    {{ $category }}
+                                </h3>
+                                <div class="space-y-3">
+                                    @foreach($categoryVendors as $vendorData)
+                                    <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-200 transition {{ $vendorData['source'] === 'package' ? 'bg-purple-50/30' : ($vendorData['source'] === 'recommendation' ? 'bg-yellow-50/30' : 'bg-blue-50/30') }}">
+                                        <div class="flex items-start justify-between">
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <h4 class="font-semibold text-gray-900">
+                                                        {{ $vendorData['vendor']?->brand_name ?? $vendorData['item_name'] ?? 'Vendor Eksternal' }}
+                                                    </h4>
+                                                    <!-- Source Badge -->
+                                                    @if($vendorData['source'] === 'package')
+                                                        <span class="px-2 py-0.5 text-xs font-bold rounded bg-purple-100 text-purple-800">PAKET</span>
+                                                    @elseif($vendorData['source'] === 'client_choice')
+                                                        <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-100 text-blue-800">PILIHAN CLIENT</span>
+                                                    @elseif($vendorData['source'] === 'recommendation')
+                                                        <span class="px-2 py-0.5 text-xs font-bold rounded bg-yellow-100 text-yellow-800">REKOMENDASI</span>
+                                                        @if(isset($vendorData['status']))
+                                                            @if($vendorData['status'] === 'approved')
+                                                                <span class="px-2 py-0.5 text-xs font-bold rounded bg-green-100 text-green-800">DISETUJUI</span>
+                                                            @elseif($vendorData['status'] === 'rejected')
+                                                                <span class="px-2 py-0.5 text-xs font-bold rounded bg-red-100 text-red-800">DITOLAK</span>
+                                                            @else
+                                                                <span class="px-2 py-0.5 text-xs font-bold rounded bg-gray-100 text-gray-600">PENDING</span>
+                                                            @endif
+                                                        @endif
+                                                    @endif
+                                                </div>
+                                                @if($vendorData['item_name'] && $vendorData['item_name'] !== ($vendorData['vendor']?->brand_name ?? ''))
+                                                    <p class="text-sm text-gray-600">{{ $vendorData['item_name'] }}</p>
+                                                @endif
+                                                @if(isset($vendorData['notes']) && $vendorData['notes'])
+                                                    <p class="text-sm text-gray-500 mt-1 italic">{{ Str::limit($vendorData['notes'], 100) }}</p>
+                                                @endif
+                                            </div>
+                                            <div class="text-right">
+                                                @if($vendorData['price'] > 0)
+                                                    <p class="text-lg font-bold text-green-600">Rp {{ number_format($vendorData['price'], 0, ',', '.') }}</p>
+                                                @else
+                                                    <p class="text-sm text-gray-400">Harga TBD</p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+
+                        <!-- Total Summary -->
+                        @php
+                            $totalFromPackage = $packageVendors->sum('price');
+                            $totalFromRecommendation = $recommendationVendors->where('status', 'approved')->sum('price');
+                            $grandTotal = $totalFromPackage + $totalFromRecommendation;
+                        @endphp
+                        @if($grandTotal > 0)
+                        <div class="mt-6 pt-4 border-t border-gray-200">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-medium text-gray-600">Total Estimasi Vendor</span>
+                                <span class="text-xl font-bold text-gray-900">Rp {{ number_format($grandTotal, 0, ',', '.') }}</span>
+                            </div>
+                        </div>
+                        @endif
+                    @else
+                        <!-- Empty State -->
+                        <div class="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                            <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                            <p class="text-gray-500 mb-2">Client belum memilih vendor pada booking ini.</p>
+                            <p class="text-sm text-gray-400">Anda dapat memberikan rekomendasi vendor untuk client.</p>
+                            @if(auth()->user()->hasAnyRole(['SuperUser', 'Owner', 'Admin']))
+                            <a href="{{ route('recommendations.create', $clientRequest) }}" class="inline-flex items-center mt-4 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition text-sm font-medium">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Berikan Rekomendasi
+                            </a>
+                            @endif
+                        </div>
+                    @endif
+                </div>
+
+                </div>
+
+                <!-- Recommendations History (Collapsed) -->
+                @if($clientRequest->recommendations && $clientRequest->recommendations->count() > 0)
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <details class="group">
+                        <summary class="flex justify-between items-center cursor-pointer list-none">
+                            <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Riwayat Rekomendasi ({{ $clientRequest->recommendations->count() }})
+                            </h2>
+                            <svg class="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </summary>
+                        <div class="mt-4 space-y-3">
                             @foreach($clientRequest->recommendations as $rec)
                             <a href="{{ route('recommendations.show', $rec) }}" class="block border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-sm transition group">
                                 <div class="flex justify-between items-start">
@@ -199,17 +418,9 @@
                             </a>
                             @endforeach
                         </div>
-                    @else
-                        <div class="text-center py-6 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                            <p class="text-sm text-gray-500">No recommendations created yet.</p>
-                            @if(auth()->user()->hasAnyRole(['SuperUser', 'Owner', 'Admin']))
-                            <a href="{{ route('recommendations.create', $clientRequest) }}" class="inline-block mt-2 text-sm text-blue-600 font-medium hover:underline">
-                                Create the first one
-                            </a>
-                            @endif
-                        </div>
-                    @endif
+                    </details>
                 </div>
+                @endif
 
                 <!-- Internal Notes -->
                 @if($clientRequest->notes)
