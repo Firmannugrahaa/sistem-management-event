@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Portfolio;
+use App\Models\User;
 use App\Models\Vendor;
 use App\Models\Service;
 use App\Models\Venue;
@@ -27,33 +28,68 @@ class LandingPageController extends Controller
         // Mengambil data portfolio, venue, dan vendor
         $portfolios = Portfolio::with('images')->where('status', 'published')->orderBy('order', 'asc')->limit(6)->get();
         
-        // Get venues from vendors with "Venue" service type
-        $venueVendors = Vendor::with(['user', 'serviceType', 'portfolios'])
-            ->whereNotNull('user_id')
-            ->where('is_active', true)
-            ->whereHas('serviceType', function($query) {
-                $query->where('name', 'Venue');
+        // Get Venue Vendors
+        // Get Venue Vendors
+        $venueVendors = Vendor::where(function($q) {
+                $q->where('category', 'Venue')
+                  ->orWhereHas('serviceType', function($s) {
+                      $s->where('name', 'Venue');
+                  });
             })
-            ->whereHas('user', function($query) {
-                $query->whereHas('roles', function($roleQuery) {
-                    $roleQuery->whereIn('name', ['Vendor', 'Owner']);
-                });
-            })
-            ->orderByRaw('CASE WHEN brand_name IS NOT NULL AND logo_path IS NOT NULL THEN 0 ELSE 1 END')
-            ->orderBy('created_at', 'desc')
-            ->limit(8)
+            ->with(['user', 'packages' => function($q) {
+                $q->where('is_visible', true)->select('vendor_id', 'price');
+            }, 'catalogItems' => function($q) {
+                $q->where('status', 'available')->select('vendor_id', 'attributes', 'name'); 
+            }, 'catalogItems.images', 'portfolios' => function($q) {
+                $q->where('status', 'published')->select('id', 'vendor_id', 'title')->limit(3);
+            }, 'portfolios.images']) 
             ->get()
-            ->map(function ($vendor) {
+            ->map(function($vendor) {
+                $user = $vendor->user;
+                $lowestPrice = $vendor->packages->min('price');
+                
+                // Get image: Catalog Item Photos -> Portfolio Photos -> Default
+                $image = null;
+                
+                // Priority 1: Try to get image from catalog items (actual venue photos)
+                if ($vendor->catalogItems->isNotEmpty()) {
+                    foreach($vendor->catalogItems as $item) {
+                        if ($item->images->isNotEmpty()) {
+                            $firstImg = $item->images->first();
+                            if ($firstImg && $firstImg->image_path && file_exists(public_path('storage/' . $firstImg->image_path))) {
+                                $image = asset('storage/' . $firstImg->image_path);
+                                break; // Found a valid image, stop searching
+                            }
+                        }
+                    }
+                }
+                
+                // Priority 2: If no catalog images, try portfolio images
+                if (!$image && $vendor->portfolios->isNotEmpty()) {
+                    foreach($vendor->portfolios as $portfolio) {
+                        if ($portfolio->images->isNotEmpty()) {
+                            $firstImage = $portfolio->images->first();
+                            if ($firstImage && $firstImage->image_path && file_exists(public_path('storage/' . $firstImage->image_path))) {
+                                $image = asset('storage/' . $firstImage->image_path);
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Priority 3: Default placeholder
+                if (!$image) {
+                    $image = 'https://images.unsplash.com/photo-1519167758481-83f29da8c2bc?auto=format&fit=crop&w=600&q=80';
+                }
+
                 return [
-                    'id' => $vendor->id,
-                    'name' => $vendor->brand_name ?? ($vendor->user ? $vendor->user->name : $vendor->contact_person),
-                    'address' => $vendor->address ?? 'Lokasi tersedia',
-                    'capacity' => $vendor->venue_capacity ?? 'Fleksibel',
-                    'price' => $vendor->starting_price ?? 0,
-                    'logo' => $vendor->logo_path ? asset('storage/' . $vendor->logo_path) : null,
-                    'image' => $vendor->portfolios->first()?->image_path ? asset('storage/' . $vendor->portfolios->first()->image_path) : null,
-                    'type' => 'vendor',
-                    'vendor_id' => $vendor->id,
+                    'vendor_id' => $user ? $user->id : $vendor->user_id,
+                    'name' => $vendor->brand_name ?? ($user ? $user->name : 'Unnamed'),
+                    'owner' => $user ? $user->name : 'Unknown Owner',
+                    'address' => $vendor->address ?? 'Lokasi belum diatur',
+                    'image' => $image,
+                    'price' => $lowestPrice,
+                    'capacity' => '500-1000'
                 ];
             });
 

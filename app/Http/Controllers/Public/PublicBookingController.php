@@ -185,7 +185,11 @@ class PublicBookingController extends Controller
                 'event_type' => $validated['event_type'],
                 'message' => $message,
                 'vendor_id' => $validated['vendor_id'] ?? null,
-                'event_package_id' => $validated['package_id'] ?? null,  // ✅ FIXED: Save selected package
+                'event_package_id' => $validated['package_id'] ?? null,
+                // ✅ FIX: Save couple names for wedding/engagement
+                'groom_name' => $validated['groom_name'] ?? null,
+                'bride_name' => $validated['bride_name'] ?? null,
+                'fill_couple_later' => $validated['fill_couple_later'] ?? false,
                 'status' => 'pending',
                 'detailed_status' => 'new',
                 'request_source' => 'public_booking_form',

@@ -420,9 +420,11 @@ class ClientRequest extends Model
 
         // For wedding events, check couple names unless fill_later is set
         if ($this->event_type === 'Wedding' && !$this->fill_couple_later) {
-            return $hasBasicInfo 
-                && !empty($this->groom_name) 
-                && !empty($this->bride_name);
+            // ✅ FIX: Check both old (cpp_name/cpw_name) and new (groom_name/bride_name) field names
+            $hasGroomName = !empty($this->groom_name) || !empty($this->cpp_name);
+            $hasBrideName = !empty($this->bride_name) || !empty($this->cpw_name);
+            
+            return $hasBasicInfo && $hasGroomName && $hasBrideName;
         }
 
         return $hasBasicInfo;

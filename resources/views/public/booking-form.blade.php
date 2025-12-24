@@ -262,9 +262,9 @@ function bookingWizard() {
                     this.groomName = data.groomName || '';
                     this.brideName = data.brideName || '';
                     
-                    // If user just logged in and was in login flow, advance to step 5
+                    // ✅ FIX: If user just logged in/registered, go to step 4 (summary) not step 5
                     if (wasInLoginFlow === 'true' && this.isLoggedIn) {
-                        this.currentStep = 5;
+                        this.currentStep = 4; // Show summary first, not personal data form
                         localStorage.removeItem('bookingLoginFlow');
                         // Smooth scroll to top after a short delay
                         setTimeout(() => {

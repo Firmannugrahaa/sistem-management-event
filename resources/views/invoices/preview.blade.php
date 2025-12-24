@@ -216,8 +216,19 @@
             <tr>
                 <td>
                     <div style="display: flex; flex-direction: column; align-items: center;">
-                        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSJsaWdodGdyZXkiLz4KPHRleHQgeD0iMzAiIHk9IjMwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9ImJsYWNrIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0iY2VudHJhbCI+TE9HTzwvdGV4dD4KPC9zdmc+" alt="Logo Placeholder" style="width: 60px; height: 60px; margin-bottom: 10px;">
-                        <div style="font-size: 18px; font-weight: bold; margin: 5px 0;">Nama Perusahaan Anda</div>
+                        <!-- @php
+                            $hasLogo = isset($companySettings) && !empty($companySettings->logo);
+                        @endphp
+                        
+                        @if($hasLogo)
+                            <img src="{{ asset('storage/' . $companySettings->logo) }}" 
+                                 alt="{{ $companySettings->company_name ?? 'Company Logo' }}" 
+                                 style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px;">
+                        @else
+                            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSJsaWdodGdyZXkiLz4KPHRleHQgeD0iMzAiIHk9IjMwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9ImJsYWNrIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0iY2VudHJhbCI+TE9HTzwvdGV4dD4KPC9zdmc+" alt="Logo Placeholder" style="width: 60px; height: 60px; margin-bottom: 10px;">
+                        @endif -->
+                        
+                        <div style="font-size: 18px; font-weight: bold; margin: 5px 0;">{{ $companySettings->company_name ?? 'Nama Perusahaan' }}</div>
                         <div style="font-size: 24px; font-weight: bold; color: #333; text-transform: uppercase;">INVOICE</div>
                     </div>
                     <hr>
@@ -241,7 +252,7 @@
                         <p>{{ e($invoice->event->client_name ?? $invoice->event->user->name ?? 'Pelanggan') }}<br>
                             Phone: {{ e($invoice->event->client_phone ?? $invoice->event->user->phone ?? 'Nomor telepon tidak tersedia') }}<br>
                             Email: {{ e($invoice->event->client_email ?? $invoice->event->user->email ?? 'Email tidak tersedia') }}<br>
-                            Alamat: {{ e($invoice->event->client_address ?? $invoice->event->location ?? 'Alamat tidak tersedia') }}</p>
+                            <!-- Alamat: {{ e($invoice->event->client_address ?? $invoice->event->location ?? 'Alamat tidak tersedia') }}</p> -->
                     </td>
                 </tr>
                 <tr>
@@ -387,8 +398,8 @@
             <p>Informasi Rekening Bank:</p>
             <ul style="margin-top: 5px;">
                 <li>Bank: Bank Central Asia (BCA)</li>
-                <li>No. Rekening: 1234567890</li>
-                <li>Atas Nama: Nama Perusahaan</li>
+                <li>No. Rekening: 1390504086 </li>
+                <li>Atas Nama: {{ $companySettings->company_name ?? 'Nama Perusahaan' }}</li>
             </ul>
             <p>Syarat dan ketentuan pembayaran:</p>
             <ul style="margin-top: 5px;">
@@ -406,7 +417,7 @@
                         <div class="signature-line"></div>
                     </div>
                     <div>Pihak Perusahaan</div>
-                    <div>({{ config('app.name', 'Nama Perusahaan') }})</div>
+                    <div>({{ $companySettings->company_name ?? 'Nama Perusahaan' }})</div>
                     <div>{{ now()->format('d M Y') }}</div>
                 </td>
                 <td style="width: 50%; text-align: center; padding: 10px;">

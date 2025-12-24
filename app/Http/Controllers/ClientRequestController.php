@@ -413,11 +413,13 @@ class ClientRequestController extends Controller
             'status' => 'planning', // Events start in planning stage
         ]);
             
-            // Update booking status
-            $clientRequest->update([
-                'detailed_status' => 'confirmed',
-                'status' => 'done'
-            ]);
+        // ✅ FIX: Update booking status with correct values
+        // detailed_status must be 'converted_to_event' (from detailed_status constraint)
+        // status must be 'done' (from status enum: pending, on_process, done)
+        $clientRequest->update([
+            'detailed_status' => 'converted_to_event',
+            'status' => 'done'
+        ]);
             
             // Attach vendors from package if exists
             if ($clientRequest->eventPackage) {

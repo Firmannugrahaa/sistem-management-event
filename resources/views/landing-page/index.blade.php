@@ -325,57 +325,6 @@
     </section>
 
     {{-- Our Venue --}}
-    <section id="venues" class="py-20 bg-white">
-        <div class="container mx-auto px-6">
-            <div class="text-center mb-12">
-                <h2 class="text-4xl md:text-5xl font-bold text-[#8B8680] mb-4">Venue Rekanan Kami</h2>
-                <p class="text-lg text-gray-600">Pilihan venue terbaik untuk acara impian Anda</p>
-            </div>
-
-            @if(isset($venueVendors) && $venueVendors->count() > 0)
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                @foreach($venueVendors as $venue)
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-100 group">
-                    <div class="relative h-56 overflow-hidden">
-                        <img src="{{ $venue['image'] ?? 'https://images.unsplash.com/photo-1519167758481-83f29da8c2bc?auto=format&fit=crop&w=600&q=80' }}" 
-                             alt="{{ $venue['name'] }}" 
-                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                        <div class="absolute top-4 right-4 bg-[#9CAF88] text-white px-3 py-1 rounded-full text-sm font-semibold shadow-md">
-                            {{ $venue['capacity'] }} Pax
-                        </div>
-                        @if($venue['price'] > 0)
-                        <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm text-[#8B8680] px-3 py-1 rounded-lg text-sm font-bold shadow-md">
-                            Mulai Rp {{ number_format($venue['price'], 0, ',', '.') }}
-                        </div>
-                        @endif
-                    </div>
-                    <div class="p-6">
-                        <h3 class="text-xl font-bold text-[#8B8680] mb-2 line-clamp-1">{{ $venue['name'] }}</h3>
-                        <div class="flex items-center text-gray-600 mb-3">
-                            <svg class="w-5 h-5 mr-2 text-[#9CAF88] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            <span class="line-clamp-1">{{ $venue['address'] }}</span>
-                        </div>
-                        <p class="text-gray-700 mb-4 line-clamp-2">
-                            Venue eksklusif untuk momen spesial Anda. Hubungi kami untuk ketersediaan dan penawaran terbaik.
-                        </p>
-                        <a href="{{ route('vendor.profile.show', $venue['vendor_id']) }}" class="block w-full text-center bg-[#9CAF88] text-white py-3 rounded-lg font-semibold hover:bg-[#8a9e7a] transition shadow-md hover:shadow-lg">
-                            Lihat Detail Venue
-                        </a>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-            @else
-            {{-- Fallback if no venues found --}}
-            <div class="text-center py-12">
-                <p class="text-gray-500 text-lg">Belum ada venue yang tersedia saat ini.</p>
-            </div>
-            @endif
-        </div>
-    </section>
 
     {{-- Event Packages - Decoy Effect Pricing Strategy --}}
     @if(isset($eventPackages) && $eventPackages->count() > 0)

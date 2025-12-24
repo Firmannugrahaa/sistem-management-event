@@ -219,7 +219,10 @@ class InvoiceController extends Controller
         $this->authorize('view', $invoice);
 
         $invoice->refresh();
+        
+        // Load company settings for logo and company info
+        $companySettings = \App\Models\CompanySetting::first();
 
-        return view('invoices.preview', compact('invoice'));
+        return view('invoices.preview', compact('invoice', 'companySettings'));
     }
 }

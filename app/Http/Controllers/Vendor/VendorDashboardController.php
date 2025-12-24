@@ -51,10 +51,11 @@ class VendorDashboardController extends Controller
         $upcomingEvents = $assignedEvents->where('start_time', '>', now())->sortBy('start_time');
         $completedEvents = $assignedEvents->where('start_time', '<=', now())->count();
         
-        // Revenue (from payments on assigned events)
-        $totalRevenue = Payment::whereHas('invoice.event.vendors', function($q) use ($vendor) {
-            $q->where('vendor_id', $vendor->id);
-        })->sum('amount');
+        // Revenue (from actual items/packages assigned to this vendor in events)
+        // Sum price * quantity for all vendor's items across all events
+        $totalRevenue = \App\Models\EventVendorItem::where('vendor_id', $vendor->id)
+            ->selectRaw('SUM(price * quantity) as total')
+            ->value('total') ?? 0;
         
         // ============ RECENT ACTIVITY ============
         

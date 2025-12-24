@@ -20,6 +20,12 @@
     
     <!-- Font Awesome for icons in modal -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Swiper CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    
+    <!-- Swiper JS -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 </head>
 
 <body class="font-sans antialiased bg-white">
@@ -46,7 +52,7 @@
                 <a href="#about" class="text-gray-600 hover:text-[#9CAF88] font-medium transition">Tentang</a>
                 <a href="#portfolio" class="text-gray-600 hover:text-[#9CAF88] font-medium transition">Portfolio</a>
                 <a href="#gallery" class="text-gray-600 hover:text-[#9CAF88] font-medium transition">Galeri</a>
-                <a href="#venues" class="text-gray-600 hover:text-[#9CAF88] font-medium transition">Venue</a>
+                <!-- <a href="#venues" class="text-gray-600 hover:text-[#9CAF88] font-medium transition">Venue</a> -->
                 <a href="#vendors" class="text-gray-600 hover:text-[#9CAF88] font-medium transition">Vendor</a>
                 <a href="#faq" class="text-gray-600 hover:text-[#9CAF88] font-medium transition">FAQ</a>
                 <a href="#contact" class="text-gray-600 hover:text-[#9CAF88] font-medium transition">Kontak</a>
@@ -128,7 +134,7 @@
                         <li><a href="#about" class="text-gray-300 hover:text-[#9CAF88] transition">Tentang Kami</a></li>
                         <li><a href="#portfolio" class="text-gray-300 hover:text-[#9CAF88] transition">Portfolio</a></li>
                         <li><a href="#gallery" class="text-gray-300 hover:text-[#9CAF88] transition">Galeri</a></li>
-                        <li><a href="#venues" class="text-gray-300 hover:text-[#9CAF88] transition">Venue</a></li>
+                        <!-- <li><a href="#venues" class="text-gray-300 hover:text-[#9CAF88] transition">Venue</a></li> -->
                         <li><a href="#vendors" class="text-gray-300 hover:text-[#9CAF88] transition">Vendor</a></li>
                     </ul>
                 </div>

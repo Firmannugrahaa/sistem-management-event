@@ -81,7 +81,11 @@ class RegisteredUserController extends Controller
                 'event_type' => $pendingBooking['event_type'],
                 'message' => $pendingBooking['message'] ?? null,
                 'vendor_id' => $pendingBooking['vendor_id'] ?? null,
-                'event_package_id' => $pendingBooking['package_id'] ?? null,  // ✅ FIXED
+                'event_package_id' => $pendingBooking['package_id'] ?? null,
+                // ✅ FIX: Save couple names for wedding/engagement
+                'groom_name' => $pendingBooking['groom_name'] ?? null,
+                'bride_name' => $pendingBooking['bride_name'] ?? null,
+                'fill_couple_later' => $pendingBooking['fill_couple_later'] ?? false,
                 'status' => 'pending',
                 'detailed_status' => 'new',
                 'request_source' => 'public_booking_form',
@@ -112,11 +116,11 @@ class RegisteredUserController extends Controller
             // Clear the session
             session()->forget('pending_booking');
 
-            // Redirect with modal flag
-            return redirect()->route('landing.page')
+            // ✅ FIX: Redirect back to booking form with flag to go to step 4 (summary)
+            // The booking form will auto-restore data from localStorage and show step 4
+            return redirect()->route('public.booking.form')
                 ->with('booking_created', true)
-                ->with('show_redirect_modal', true)
-                ->with('success', 'Akun berhasil dibuat dan booking Anda telah dikirim!');
+                ->with('success', 'Selamat datang! Akun dan booking Anda berhasil dibuat. Silakan review ringkasan booking Anda.');
         }
 
         // Check if there is a specific return_url parameter (POST field or session)

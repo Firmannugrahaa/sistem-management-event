@@ -678,7 +678,8 @@ function approveItem(itemId, category, price) {
 <style>
 [x-cloak] { display: none !important; }
 </style>
-    <!-- COUPLE DATA MODAL -->
+    {{-- COUPLE DATA MODAL --}}
+    @if($activeRequest)
     <div x-show="showCoupleModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="showCoupleModal = false">
@@ -735,4 +736,5 @@ function approveItem(itemId, category, price) {
             </div>
         </div>
     </div>
+    @endif
 @endsection
