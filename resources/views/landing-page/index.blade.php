@@ -15,7 +15,7 @@
         <div class="container mx-auto px-6 relative z-10 text-white">
             <div class="max-w-3xl">
                 <h1 class="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-                    Wujudkan Momen Istimewa Bersama <span class="text-[#9CAF88]">PT. Lorem Ipsum</span>
+                    Wujudkan Momen Istimewa Bersama <span class="text-[#9CAF88]">{{ $companySetting->company_name ?? 'TemanMenujuHalal' }}</span>
                 </h1>
                 <p class="text-xl md:text-2xl mb-8 text-gray-200">
                     Event Organizer profesional untuk lamaran, pernikahan, ulang tahun, dan acara korporat yang berkesan
@@ -46,7 +46,7 @@
                 <div>
                     <h2 class="text-4xl md:text-5xl font-bold text-[#8B8680] mb-6">Tentang Kami</h2>
                     <p class="text-lg text-gray-700 mb-6 leading-relaxed">
-                        <strong class="text-[#9CAF88]">PT. Lorem Ipsum</strong> adalah partner terpercaya Anda dalam mewujudkan setiap momen istimewa. Dengan pengalaman bertahun-tahun dalam industri event organizer, kami berkomitmen memberikan layanan terbaik untuk lamaran, pernikahan, ulang tahun, hingga acara korporat.
+                        <strong class="text-[#9CAF88]">{{ $companySetting->company_name ?? 'TemanMenujuHalal' }}</strong> adalah partner terpercaya Anda dalam mewujudkan setiap momen istimewa. Dengan pengalaman bertahun-tahun dalam industri event organizer, kami berkomitmen memberikan layanan terbaik untuk lamaran, pernikahan, ulang tahun, hingga acara korporat.
                     </p>
                     <p class="text-lg text-gray-700 mb-6 leading-relaxed">
                         Tim profesional kami memahami bahwa setiap acara memiliki cerita unik. Kami hadir untuk mendengarkan visi Anda dan mewujudkannya dengan detail sempurna, kreativitas tinggi, dan dedikasi penuh.

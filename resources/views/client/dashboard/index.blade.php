@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="py-6">
+<div class="py-6" x-data="{ showCoupleModal: false }">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
         
         {{-- SUCCESS / ERROR MESSAGES --}}
@@ -34,7 +34,7 @@
                     <a href="#rating-section" class="bg-white text-indigo-600 hover:bg-indigo-50 font-bold py-2 px-6 rounded-lg shadow-md transition">
                         Beri Ulasan
                     </a>
-                    <a href="{{ route('invoice.show', $activeRequest->event->invoice) }}" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-2 px-6 rounded-lg transition border border-indigo-500">
+                    <a href="{{ route('invoices.preview', $activeRequest->event->invoice) }}" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-2 px-6 rounded-lg transition border border-indigo-500">
                         Lihat Invoice
                     </a>
                 </div>
@@ -497,7 +497,7 @@
                                             {{ $invoiceSummary['status'] }}
                                         </span>
                                     </div>
-                                    <a href="{{ route('invoice.show', $invoiceSummary['invoice_id']) }}" 
+                                    <a href="{{ route('invoices.preview', $invoiceSummary['invoice_id']) }}" 
                                        class="block w-full text-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
                                         Lihat Invoice
                                     </a>
@@ -578,7 +578,7 @@
                             @elseif($activeRequest->fill_couple_later)
                                 <div class="text-center py-4">
                                     <p class="text-sm text-yellow-600">Data pasangan belum diisi.</p>
-                                    <button class="mt-2 text-sm text-blue-600 hover:underline">Isi Sekarang</button>
+                                    <button @click="showCoupleModal = true" class="mt-2 text-sm text-blue-600 hover:underline">Isi Sekarang</button>
                                 </div>
                             @else
                                 <p class="text-sm text-gray-500 text-center py-4">Belum ada data pasangan.</p>
@@ -678,4 +678,61 @@ function approveItem(itemId, category, price) {
 <style>
 [x-cloak] { display: none !important; }
 </style>
+    <!-- COUPLE DATA MODAL -->
+    <div x-show="showCoupleModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="showCoupleModal = false">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <form action="{{ route('client.requests.update', $activeRequest) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                    Lengkapi Data Pasangan
+                                </h3>
+                                <div class="mt-4 space-y-4">
+                                    <div>
+                                        <label for="groom_name" class="block text-sm font-medium text-gray-700">Nama Calon Pengantin Pria</label>
+                                        <input type="text" name="groom_name" id="groom_name" 
+                                            value="{{ $activeRequest->groom_name }}"
+                                            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                            required placeholder="Contoh: Budi Santoso">
+                                    </div>
+                                    <div>
+                                        <label for="bride_name" class="block text-sm font-medium text-gray-700">Nama Calon Pengantin Wanita</label>
+                                        <input type="text" name="bride_name" id="bride_name" 
+                                            value="{{ $activeRequest->bride_name }}"
+                                            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                            required placeholder="Contoh: Siti Aminah">
+                                    </div>
+                                    <div>
+                                        <label for="message" class="block text-sm font-medium text-gray-700">Catatan Tambahan (Opsional)</label>
+                                        <textarea name="message" id="message" rows="3" 
+                                            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                            placeholder="Tulis catatan jika ada...">{{ $activeRequest->message }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Simpan Data
+                        </button>
+                        <button type="button" @click="showCoupleModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Batal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection

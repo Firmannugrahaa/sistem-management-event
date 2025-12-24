@@ -86,6 +86,27 @@ class SettingsController extends Controller
 
         $settings = CompanySetting::first();
         
+        // Base data from request
+        $data = $request->only([
+            'company_name',
+            'company_phone',
+            'company_email',
+            'company_address',
+            'province_id',
+            'city_id',
+            'district_id',
+            'village_id',
+            'postal_code',
+            'street_name',
+            'building',
+            'company_number',
+            'address_details',
+            'tax_number',
+            'bank_account_name',
+            'bank_account_number',
+            'bank_name'
+        ]);
+        
         // Generate full address from structured fields if company_address is empty
         $addressParts = [];
         
@@ -126,6 +147,11 @@ class SettingsController extends Controller
         
         // Generate the structured address
         $generatedAddress = implode(', ', $addressParts);
+
+        // Prioritize manual company address, if not provided then generate from structured fields
+        if (empty($data['company_address']) && !empty($generatedAddress)) {
+            $data['company_address'] = $generatedAddress;
+        }
         
         // Handle company logo upload
         if ($request->hasFile('company_logo_path')) {
@@ -160,62 +186,18 @@ class SettingsController extends Controller
             $filename = time() . '_' . $file->getClientOriginalName();
             $file->move(public_path('logos'), $filename);
             
-            $logoPath = 'logos/' . $filename;
-            $request->merge(['company_logo_path' => $logoPath]);
-            $request->merge(['logo_last_updated_at' => now()]);
-        }
-
-        // Prioritize manual company address, if not provided then generate from structured fields
-        if (empty($request->company_address) && !empty($generatedAddress)) {
-            // Only generate address if user hasn't provided a manual address
-            $request->merge(['company_address' => $generatedAddress]);
+            // Explicitly set the string path in the data array
+            $data['company_logo_path'] = 'logos/' . $filename;
+            $data['logo_last_updated_at'] = now();
         }
 
         if ($settings) {
-            $settings->update($request->only([
-                'company_name',
-                'company_phone',
-                'company_email',
-                'company_address',
-                'company_logo_path',
-                'logo_last_updated_at',
-                'province_id',
-                'city_id',
-                'district_id',
-                'village_id',
-                'postal_code',
-                'street_name',
-                'building',
-                'company_number',
-                'address_details',
-                'tax_number',
-                'bank_account_name',
-                'bank_account_number',
-                'bank_name'
-            ]));
+            $settings->update($data);
         } else {
-            CompanySetting::create($request->only([
-                'company_name',
-                'company_phone',
-                'company_email',
-                'company_address',
-                'company_logo_path',
-                'logo_last_updated_at',
-                'province_id',
-                'city_id',
-                'district_id',
-                'village_id',
-                'postal_code',
-                'street_name',
-                'building',
-                'company_number',
-                'address_details',
-                'tax_number',
-                'bank_account_name',
-                'bank_account_number',
-                'bank_name'
-            ]));
+            CompanySetting::create($data);
         }
+
+        cache()->forget('company_settings');
 
         return redirect()->route('superuser.settings.index')->with('success', 'Pengaturan perusahaan berhasil diperbarui.');
     }
@@ -256,6 +238,8 @@ class SettingsController extends Controller
             'company_logo_path' => null,
             'logo_last_updated_at' => now()
         ]);
+
+        cache()->forget('company_settings');
 
         return redirect()->route('superuser.settings.index')->with('success', 'Logo perusahaan berhasil dihapus.');
     }

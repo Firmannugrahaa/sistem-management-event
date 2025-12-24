@@ -44,8 +44,7 @@
 
                     <!-- Description -->
                     <div class="prose max-w-none text-gray-700 mb-8">
-                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl nec ultricies lacinia, nisl nisl aliquet nisl, eget aliquet nisl nisl eget nisl. Sed euismod, nisl nec ultricies lacinia, nisl nisl aliquet nisl, eget aliquet nisl nisl eget nisl.</p>
-                        <p>Integer euismod, nisl nec ultricies lacinia, nisl nisl aliquet nisl, eget aliquet nisl nisl eget nisl. Sed euismod, nisl nec ultricies lacinia, nisl nisl aliquet nisl, eget aliquet nisl nisl eget nisl.</p>
+                        <p x-text="selectedVendor.description || 'Deskripsi vendor belum tersedia.'"></p>
                     </div>
 
                     <!-- Action Buttons -->
