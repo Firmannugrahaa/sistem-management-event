@@ -375,30 +375,129 @@
                 <!-- RIGHT SIDE: SIDEBAR -->
                 <div class="space-y-6">
                     
-                    <!-- ESTIMASI BIAYA -->
+                    <!-- ESTIMASI BIAYA (UX Redesign) -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div class="px-5 py-3 border-b border-gray-200 bg-gray-50">
                             <h3 class="text-sm font-bold text-gray-900 uppercase">Estimasi Biaya</h3>
                         </div>
                         <div class="p-5">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-sm text-gray-600">Budget Awal</span>
-                                <span class="text-sm font-medium text-gray-900">Rp {{ number_format($clientRequest->budget ?? 0, 0, ',', '.') }}</span>
-                            </div>
-                            <!-- Separator -->
-                            <div class="border-t border-gray-100 my-3"></div>
-                            
-                            <div class="mt-4 pt-3 border-t-2 border-gray-100 flex justify-between items-center">
-                                <span class="font-bold text-gray-900">Total Estimasi</span>
-                                @if($clientRequest->total_price)
-                                    <span class="font-bold text-xl text-blue-600">Rp {{ number_format($clientRequest->total_price, 0, ',', '.') }}</span>
+                            @php
+                                // Determine what's selected
+                                $hasPackage = $clientRequest->eventPackage !== null;
+                                $packagePrice = $hasPackage ? ($clientRequest->eventPackage->final_price ?? 0) : 0;
+                                
+                                // Calculate total from available data
+                                $totalEstimasi = $clientRequest->total_price ?? $packagePrice ?? 0;
+                                $budgetAwal = $clientRequest->budget ?? 0;
+                                $isOverBudget = $totalEstimasi > $budgetAwal && $budgetAwal > 0;
+                            @endphp
+
+                            {{-- TOTAL ESTIMASI - Prominent at Top --}}
+                            <div class="text-center mb-5 pb-4 border-b border-gray-100">
+                                <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Total Estimasi</p>
+                                @if($totalEstimasi > 0)
+                                    <p class="text-3xl font-bold text-blue-600">Rp {{ number_format($totalEstimasi, 0, ',', '.') }}</p>
                                 @else
-                                    <span class="font-bold text-xl text-gray-400">Belum ada harga</span>
+                                    <p class="text-xl font-medium text-gray-400">Belum tersedia</p>
+                                    <p class="text-xs text-gray-400 mt-1">Menunggu konfirmasi admin</p>
                                 @endif
                             </div>
-                            @if($clientRequest->total_price)
-                                <p class="text-xs text-gray-500 mt-2 text-center">{{ $clientRequest->price_source }}</p>
-                            @endif
+
+                            {{-- BREAKDOWN - Conditional based on selection --}}
+                            <div class="space-y-3 mb-4">
+                                @if($hasPackage)
+                                    {{-- Package Selected --}}
+                                    <div class="flex items-start justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                        <div class="flex items-start gap-2">
+                                            <span class="text-lg">📦</span>
+                                            <div>
+                                                <p class="text-xs text-blue-600 font-semibold uppercase">Paket</p>
+                                                <p class="text-sm font-medium text-gray-900">{{ $clientRequest->eventPackage->name }}</p>
+                                            </div>
+                                        </div>
+                                        <p class="text-sm font-bold text-gray-900">Rp {{ number_format($packagePrice, 0, ',', '.') }}</p>
+                                    </div>
+                                @endif
+
+                                @if($clientRequest->vendor_id && $clientRequest->vendor)
+                                    {{-- Direct Vendor Selected (Susun Sendiri) --}}
+                                    <div class="flex items-start justify-between p-3 bg-green-50 rounded-lg border border-green-100">
+                                        <div class="flex items-start gap-2">
+                                            <span class="text-lg">🏢</span>
+                                            <div>
+                                                <p class="text-xs text-green-600 font-semibold uppercase">Vendor Utama</p>
+                                                <p class="text-sm font-medium text-gray-900">{{ $clientRequest->vendor->brand_name }}</p>
+                                                @if($clientRequest->vendor->serviceType)
+                                                    <p class="text-xs text-gray-500">{{ $clientRequest->vendor->serviceType->name }}</p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-gray-400 italic">Harga menyusul</p>
+                                    </div>
+                                @endif
+
+                                {{-- Accepted Recommendation Items --}}
+                                @php
+                                    $acceptedRec = $clientRequest->recommendations->where('status', 'accepted')->first();
+                                    $acceptedItems = $acceptedRec ? $acceptedRec->items->where('status', 'accepted') : collect([]);
+                                @endphp
+                                
+                                @if($acceptedItems->count() > 0)
+                                    <div class="p-3 bg-purple-50 rounded-lg border border-purple-100">
+                                        <div class="flex items-start gap-2 mb-2">
+                                            <span class="text-lg">✨</span>
+                                            <div>
+                                                <p class="text-xs text-purple-600 font-semibold uppercase">Rekomendasi Disetujui</p>
+                                                <p class="text-xs text-gray-500">{{ $acceptedItems->count() }} item</p>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-1 ml-7">
+                                            @foreach($acceptedItems->take(3) as $item)
+                                                <div class="flex justify-between text-sm">
+                                                    <span class="text-gray-700">{{ $item->vendor->brand_name ?? 'Vendor' }}</span>
+                                                    <span class="text-gray-900 font-medium">Rp {{ number_format($item->estimated_price ?? 0, 0, ',', '.') }}</span>
+                                                </div>
+                                            @endforeach
+                                            @if($acceptedItems->count() > 3)
+                                                <p class="text-xs text-purple-600">+{{ $acceptedItems->count() - 3 }} item lainnya</p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Empty State --}}
+                                @if(!$hasPackage && !$clientRequest->vendor_id && $acceptedItems->count() === 0)
+                                    <div class="text-center py-4">
+                                        <p class="text-sm text-gray-500">Belum ada layanan dipilih</p>
+                                        <p class="text-xs text-gray-400 mt-1">Admin akan membantu menyusun estimasi</p>
+                                    </div>
+                                @endif
+                            </div>
+
+                            {{-- BUDGET REFERENCE --}}
+                            <div class="pt-3 border-t border-gray-100">
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-gray-500">Budget Awal Anda</span>
+                                    <span class="font-medium {{ $isOverBudget ? 'text-red-600' : 'text-gray-700' }}">
+                                        Rp {{ number_format($budgetAwal, 0, ',', '.') }}
+                                    </span>
+                                </div>
+                                @if($isOverBudget && $totalEstimasi > 0)
+                                    <div class="mt-2 flex items-center gap-1 text-xs text-red-600">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                        </svg>
+                                        <span>Melebihi budget Rp {{ number_format($totalEstimasi - $budgetAwal, 0, ',', '.') }}</span>
+                                    </div>
+                                @elseif($totalEstimasi > 0 && $budgetAwal > 0)
+                                    <div class="mt-2 flex items-center gap-1 text-xs text-green-600">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        <span>Masih dalam budget</span>
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                     </div>
 

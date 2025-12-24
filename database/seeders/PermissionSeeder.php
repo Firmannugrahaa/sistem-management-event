@@ -43,6 +43,9 @@ class PermissionSeeder extends Seeder
             'vendor.delete',
             // Checklist Management
             'manage-checklist-templates',
+            // Vendor Service & Package Management
+            'manage_services',
+            'manage_packages',
         ];
 
         foreach ($permissions as $permission) {
@@ -55,11 +58,12 @@ class PermissionSeeder extends Seeder
             'Owner' => [
                 'create_events', 'edit_events', 'delete_events', 'view_guests',
                 'user.auto_approve_on_create', 'vendor.auto_approve_on_create',
-                'user.approve', 'vendor.approve', 'user.delete', 'vendor.delete'
+                'user.approve', 'vendor.approve', 'user.delete', 'vendor.delete',
+                'manage_services', 'manage_packages'
             ],
-            'Admin' => ['view_events', 'create_events', 'edit_events', 'view_guests'],
+            'Admin' => ['view_events', 'create_events', 'edit_events', 'view_guests', 'manage_services', 'manage_packages'],
             'Staff' => ['view_events', 'view_guests'],
-            'Vendor' => ['view_events'],
+            'Vendor' => ['view_events', 'manage_services', 'manage_packages'],
             'Client' => ['view_events'],
             'Guest' => [],
         ];

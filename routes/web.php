@@ -71,6 +71,18 @@ Route::post('/client/order/store-selections', [App\Http\Controllers\Client\Clien
 Route::post('/client/order/confirm', [App\Http\Controllers\Client\ClientOrderController::class, 'confirm'])
     ->middleware(['auth', 'verified', 'role:Client'])->name('client.order.confirm');
 
+// Client Dashboard and Requests Routes
+Route::middleware(['auth', 'verified', 'role:Client'])->prefix('client')->name('client.')->group(function () {
+    Route::get('/dashboard', [App\Http\Controllers\Client\ClientDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/requests/{clientRequest}', [App\Http\Controllers\Client\ClientDashboardController::class, 'show'])->name('requests.show');
+    Route::get('/requests/{clientRequest}', [App\Http\Controllers\Client\ClientDashboardController::class, 'show'])->name('requests.show');
+    Route::put('/requests/{clientRequest}', [App\Http\Controllers\Client\ClientDashboardController::class, 'update'])->name('requests.update');
+    Route::get('/recommendations/{recommendation}', [App\Http\Controllers\Client\ClientDashboardController::class, 'showRecommendation'])->name('recommendations.show');
+    
+    // Review Routes
+    Route::post('/events/{event}/reviews', [App\Http\Controllers\ReviewController::class, 'store'])->name('reviews.store');
+});
+
 // Client Checklist Routes
 Route::middleware(['auth', 'verified', 'role:Client'])->group(function () {
     Route::get('/client/checklist/{clientRequest}', [App\Http\Controllers\Client\ChecklistController::class, 'index'])
@@ -252,6 +264,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('events.guests', GuestController::class)->except(['index']);
     Route::post('events/{event}/guests/import', [GuestController::class, 'import'])->name('events.guests.import');
     Route::post('events/{event}/assign-vendor', [EventController::class, 'assignVendor'])->name('events.assignVendor');
+    Route::patch('events/{event}/update-status', [EventController::class, 'updateStatus'])->name('events.updateStatus');
     Route::patch('events/{event}/vendors/{vendor}/status', [EventController::class, 'updateVendorStatus'])->name('events.updateVendorStatus');
     Route::post('/events/{event}/vendors/{vendor}/detach', [EventController::class, 'detachVendor'])->name('events.detach-vendor');
     
@@ -305,6 +318,10 @@ Route::middleware('auth')->group(function () {
 
     // Vendor Dashboard Routes
     Route::prefix('vendor')->name('vendor.')->group(function () {
+        // Vendor Dashboard
+        Route::get('/dashboard', [\App\Http\Controllers\Vendor\VendorDashboardController::class, 'index'])
+            ->name('dashboard');
+        
         Route::get('/profile', function() {
             return redirect()->route('vendors.index');
         })->name('profile');

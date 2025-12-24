@@ -1,8 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Add New Team Member') }}
-        </h2>
+        <div class="flex flex-col gap-2">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+                {{ __('Add New Team Member') }}
+            </h2>
+            <x-breadcrumb :items="[
+                ['name' => 'Manage Team & Vendor', 'url' => route('team-vendor.index')],
+                ['name' => 'Team Members', 'url' => route('team-vendor.index', ['view' => 'team'])],
+                ['name' => 'Add New Team Member']
+            ]"/>
+        </div>
     </x-slot>
 
     <div class="py-12">

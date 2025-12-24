@@ -281,6 +281,7 @@ class ChecklistController extends Controller
         $timelineData = [];
         foreach ($timeframes as $tf) {
             $query = $checklist->items()
+                ->whereNotNull('days_before_event')
                 ->whereBetween('days_before_event', [$tf['min'], $tf['max']]);
             
             // Filter by priority for emergency bookings
@@ -308,6 +309,23 @@ class ChecklistController extends Controller
                     'total' => $items->count(),
                 ];
             }
+        }
+
+        // Add unscheduled items (NULL days_before_event)
+        $unscheduledItems = $checklist->items()
+            ->whereNull('days_before_event')
+            ->orderBy('order')
+            ->get();
+            
+        if ($unscheduledItems->count() > 0) {
+            $completedCount = $unscheduledItems->where('is_checked', true)->count();
+            $timelineData[] = [
+                'label' => '📌 Belum Dijadwalkan',
+                'items' => $unscheduledItems,
+                'progress' => $unscheduledItems->count() > 0 ? round($completedCount / $unscheduledItems->count() * 100) : 0,
+                'completed' => $completedCount,
+                'total' => $unscheduledItems->count(),
+            ];
         }
 
         return $timelineData;

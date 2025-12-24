@@ -101,12 +101,29 @@
                         <p class="mt-1 text-sm text-gray-500">Format: JPG, PNG, WEBP. Max: 2MB.</p>
                     </div>
 
-                    {{-- Status Active --}}
-                    <div class="flex items-center">
-                        <input type="checkbox" name="is_active" id="is_active" value="1" 
-                               class="w-4 h-4 text-[#012A4A] border-gray-300 rounded focus:ring-[#012A4A]"
-                               {{ old('is_active', $eventPackage->is_active) ? 'checked' : '' }}>
-                        <label for="is_active" class="ml-2 block text-sm text-gray-700">Aktifkan paket ini</label>
+                    {{-- Status Toggles --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-xl">
+                        {{-- Is Active --}}
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" name="is_active" value="1" 
+                                   {{ old('is_active', $eventPackage->is_active) ? 'checked' : '' }}
+                                   class="w-5 h-5 rounded border-gray-300 text-[#27AE60] focus:ring-[#27AE60]">
+                            <div>
+                                <span class="font-medium text-gray-700">Paket Aktif</span>
+                                <p class="text-xs text-gray-500">Tampilkan di landing page dan booking</p>
+                            </div>
+                        </label>
+                        
+                        {{-- Is Featured (Terfavorit) --}}
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" name="is_featured" value="1" 
+                                   {{ old('is_featured', $eventPackage->is_featured) ? 'checked' : '' }}
+                                   class="w-5 h-5 rounded border-gray-300 text-[#D4AF37] focus:ring-[#D4AF37]">
+                            <div>
+                                <span class="font-medium text-gray-700">⭐ Paket Terfavorit</span>
+                                <p class="text-xs text-gray-500">Tampilkan badge "Pilihan Terfavorit" di landing page</p>
+                            </div>
+                        </label>
                     </div>
 
                     {{-- ITEM SELECTION SECTION --}}

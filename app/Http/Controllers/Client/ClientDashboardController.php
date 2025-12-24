@@ -30,15 +30,22 @@ class ClientDashboardController extends Controller
             ->get();
 
         // Get the most recent/active client request with full details
+        // Get the most recent/active client request with full details
         $activeRequest = ClientRequest::where('user_id', $user->id)
-            ->whereNotIn('detailed_status', ['cancelled', 'completed'])
+            ->whereNotIn('detailed_status', ['cancelled']) // Allow completed events to show
             ->latest()
             ->with([
+                'eventPackage',
+                'eventPackage.items.vendorCatalogItem.vendor',
+                'eventPackage.items.vendorPackage.vendor',
+                'vendor.serviceType',
                 'recommendations' => function($q) {
                     $q->where('status', '!=', 'draft')->latest();
                 },
                 'recommendations.items.vendor',
                 'event.invoice.payments',
+                'event.vendors.serviceType', // Load vendors directly from event
+                'event.reviews', // Load reviews
                 'nonPartnerCharges'
             ])
             ->first();
@@ -67,12 +74,23 @@ class ClientDashboardController extends Controller
         if ($activeRequest && $activeRequest->event && $activeRequest->event->invoice) {
             $invoice = $activeRequest->event->invoice;
             $invoiceSummary = [
-                'total' => $invoice->total_amount,
+                'total' => $invoice->calculateActualTotal(),
+                'discount' => $invoice->voucher_discount_amount ?? 0,
                 'paid' => $invoice->paid_amount ?? 0,
-                'remaining' => $invoice->balance_due ?? $invoice->total_amount,
+                'remaining' => $invoice->balance_due, 
                 'status' => $invoice->status,
                 'invoice_id' => $invoice->id,
             ];
+        }
+
+        // For Completed events: Identify vendors to review
+        $vendorsToReview = collect();
+        if ($activeRequest && $activeRequest->detailed_status === 'completed' && $activeRequest->event) {
+            $existingReviews = $activeRequest->event->reviews->pluck('vendor_id')->toArray();
+            
+            $vendorsToReview = $activeRequest->event->vendors->filter(function($vendor) use ($existingReviews) {
+                return !in_array($vendor->id, $existingReviews);
+            });
         }
 
         return view('client.dashboard.index', compact(
@@ -81,7 +99,8 @@ class ClientDashboardController extends Controller
             'pendingItems',
             'newRecommendationsCount',
             'progressData',
-            'invoiceSummary'
+            'invoiceSummary',
+            'vendorsToReview'
         ));
     }
 
@@ -104,10 +123,16 @@ class ClientDashboardController extends Controller
             'revision_requested' => 3,
             'approved' => 4,
             'converted_to_event' => 5,
-            'completed' => 5,
+            'completed' => 5, // Completed shares the last step
+            'done' => 5, // Handle generic 'done' status
         ];
 
-        $currentStep = $statusOrder[$request->detailed_status] ?? 1;
+        // Map detailed_status to step
+        // Handle generic 'done' or 'completed'
+        $statusKey = $request->detailed_status;
+        if ($statusKey === 'done') $statusKey = 'completed';
+
+        $currentStep = $statusOrder[$statusKey] ?? 1;
         $percentage = ($currentStep / count($steps)) * 100;
 
         return [
@@ -124,7 +149,7 @@ class ClientDashboardController extends Controller
             2 => ['name' => 'On Process', 'status' => 'in_progress'],
             3 => ['name' => 'Rekomendasi', 'status' => 'recommendation_sent'],
             4 => ['name' => 'Approved', 'status' => 'approved'],
-            5 => ['name' => 'Event Ready', 'status' => 'converted_to_event'],
+            5 => ['name' => 'Event Ready', 'status' => 'completed'], // Changed label
         ];
     }
 
@@ -137,7 +162,14 @@ class ClientDashboardController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $clientRequest->load(['recommendations.items', 'event']);
+        $clientRequest->load([
+            'eventPackage',
+            'eventPackage.items.vendorCatalogItem.vendor.serviceType',
+            'eventPackage.items.vendorPackage.vendor.serviceType',
+            'vendor.serviceType',
+            'recommendations.items.vendor',
+            'event'
+        ]);
 
         return view('client.dashboard.show', compact('clientRequest'));
     }
@@ -150,6 +182,11 @@ class ClientDashboardController extends Controller
         // Security check
         if ($clientRequest->user_id !== Auth::id()) {
             abort(403, 'Unauthorized');
+        }
+
+        // Lock check
+        if (in_array($clientRequest->detailed_status, ['completed', 'converted_to_event', 'approved'])) {
+             return back()->with('error', 'Booking yang sudah disetujui atau selesai tidak dapat diubah.');
         }
 
         $validated = $request->validate([

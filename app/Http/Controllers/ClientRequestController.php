@@ -274,10 +274,12 @@ class ClientRequestController extends Controller
 
         // Sync detailed_status with status
         if ($validated['status'] === 'on_process' && in_array($clientRequest->detailed_status, ['new', 'pending', 'contacted'])) {
-            $validated['detailed_status'] = 'on_process';
+            $validated['detailed_status'] = 'contacted';
         }
         if ($validated['status'] === 'done') {
-            $validated['detailed_status'] = 'done';
+            // Map 'done' to a valid detailed_status enum value
+            // Using 'approved' as the generic success state since 'done' is not in the enum
+            $validated['detailed_status'] = 'approved';
         }
 
         $clientRequest->update($validated);

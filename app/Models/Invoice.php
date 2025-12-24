@@ -66,10 +66,39 @@ class Invoice extends Model
         );
     }
 
+    /**
+     * Helper: Calculate real-time total based on current event items.
+     * This ensures consistency between detail view and index view.
+     */
+    public function calculateActualTotal(): float
+    {
+        if (!$this->event) return $this->total_amount ?? 0;
+
+        $event = $this->event;
+        
+        // Use package price if package booking
+        if ($event->clientRequest && $event->clientRequest->event_package_id) {
+             return $event->clientRequest->eventPackage->final_price ?? 0;
+        }
+
+        // Otherwise sum vendor items + non-partner charges
+        $total = $event->vendors->sum('pivot.agreed_price');
+        
+        if ($event->clientRequest && $event->clientRequest->nonPartnerCharges) {
+            $total += $event->clientRequest->nonPartnerCharges->sum('charge_amount');
+        }
+
+        return $total;
+    }
+
     protected function finalAmount(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->total_amount - $this->voucher_discount_amount
+            get: function () {
+                // Use dynamic total instead of stored total_amount
+                $actualTotal = $this->calculateActualTotal();
+                return $actualTotal - ($this->voucher_discount_amount ?? 0);
+            }
         );
     }
 

@@ -68,7 +68,7 @@ class EventPackageController extends Controller
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'markup_percentage' => 'nullable|numeric|min:0|max:100',
             'duration' => 'nullable|string|max:100',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'image_url' => 'nullable|url',
             'is_active' => 'nullable|boolean',
             'is_featured' => 'nullable|boolean',
@@ -86,8 +86,8 @@ class EventPackageController extends Controller
             $thumbnailPath = null;
             $imageUrl = $validated['image_url'] ?? null;
             
-            if ($request->hasFile('image')) {
-                $thumbnailPath = $request->file('image')->store('event-packages', 'public');
+            if ($request->hasFile('thumbnail')) {
+                $thumbnailPath = $request->file('thumbnail')->store('event-packages', 'public');
             }
 
             // Calculate final price
@@ -235,7 +235,7 @@ class EventPackageController extends Controller
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'markup_percentage' => 'nullable|numeric|min:0|max:100',
             'duration' => 'nullable|string|max:100',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'image_url' => 'nullable|url',
             'is_active' => 'boolean',
             'is_featured' => 'nullable|boolean',
@@ -281,12 +281,12 @@ class EventPackageController extends Controller
             }
 
             // Handle thumbnail upload
-            if ($request->hasFile('image')) {
+            if ($request->hasFile('thumbnail')) {
                 // Delete old thumbnail
                 if ($eventPackage->thumbnail_path) {
                     Storage::disk('public')->delete($eventPackage->thumbnail_path);
                 }
-                $data['thumbnail_path'] = $request->file('image')->store('event-packages', 'public');
+                $data['thumbnail_path'] = $request->file('thumbnail')->store('event-packages', 'public');
             }
 
             $eventPackage->update($data);

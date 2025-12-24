@@ -27,89 +27,15 @@ class DashboardController extends Controller
                 \Log::info('Redirecting Client/User to client dashboard');
                 return redirect()->route('client.dashboard');
             }
-        // For Vendor roles, calculate revenue from their assigned events
-        else if ($user->hasRole('Vendor')) {
-            // Determine the correct ID to use for querying events.
-            $eventOwnerId = $user->id;
 
-            // --- Basic Stats ---
-            $myEvents = Event::where('user_id', $eventOwnerId)->withCount('guests')->get();
-            $totalEvents = $myEvents->count();
-            $upcomingEventsCount = $myEvents->where('start_time', '>', now())->count();
-            $totalGuests = $myEvents->sum('guests_count');
-            $recentEvents = $myEvents->sortByDesc('created_at')->take(5);
-
-            // --- Revenue Calculation for Vendors ---
-            $revenueQuery = Payment::query();
-
-            // For vendors, get revenue from events they are assigned to
-            $vendor = $user->vendor; // Assuming a user has one vendor profile
-            if ($vendor) {
-                $revenueQuery->whereHas('invoice', function ($invoiceQuery) use ($vendor) {
-                    $invoiceQuery->whereHas('event', function ($eventQuery) use ($vendor) {
-                        $eventQuery->whereHas('vendors', function ($vendorQuery) use ($vendor) {
-                            $vendorQuery->where('vendor_id', $vendor->id);
-                        });
-                    });
-                });
-            } else {
-                // If the user is a vendor but has no vendor profile, they have no revenue
-                $revenueQuery->whereRaw('1 = 0');
+            // Redirect Vendor to their dedicated dashboard
+            if ($user->hasRole('Vendor')) {
+                \Log::info('Redirecting Vendor to vendor dashboard');
+                return redirect()->route('vendor.dashboard');
             }
 
-
-            // Apply filters
-            $period = $request->input('filter_period', 'monthly'); // Default to monthly
-            $selectRaw = "SUM(amount) as total_revenue";
-            $groupBy = "";
-            $orderBy = "";
-
-            switch ($period) {
-                case 'daily':
-                    $selectRaw .= ", TO_CHAR(payment_date, 'YYYY-MM-DD') as period";
-                    $groupBy = "period";
-                    $orderBy = "period";
-                    break;
-                case 'weekly':
-                    $selectRaw .= ", TO_CHAR(payment_date, 'YYYY-WW') as period";
-                    $groupBy = "period";
-                    $orderBy = "period";
-                    break;
-                case 'monthly':
-                    $selectRaw .= ", TO_CHAR(payment_date, 'YYYY-MM') as period";
-                    $groupBy = "period";
-                    $orderBy = "period";
-                    break;
-                case 'yearly':
-                    $selectRaw .= ", TO_CHAR(payment_date, 'YYYY') as period";
-                    $groupBy = "period";
-                    $orderBy = "period";
-                    break;
-            }
-
-            $revenueOverTime = $revenueQuery->selectRaw($selectRaw)
-                ->groupBy($groupBy)
-                ->orderBy($orderBy)
-                ->get();
-
-            $totalRevenue = $revenueOverTime->sum('total_revenue');
-
-            $revenueData = [
-                'labels' => $revenueOverTime->pluck('period'),
-                'data' => $revenueOverTime->pluck('total_revenue'),
-            ];
-
-            return view('user_dashboard', compact(
-                'totalEvents',
-                'upcomingEventsCount',
-                'totalGuests',
-                'recentEvents',
-                'totalRevenue',
-                'revenueData'
-            ));
-        }
         // For SuperUser and Owner roles, show the revenue dashboard
-        else if ($user->hasRole('SuperUser') || $user->hasRole('Owner')) {
+        if ($user->hasRole('SuperUser') || $user->hasRole('Owner')) {
             \Log::info('Processing Owner/SuperUser dashboard');
             
             // Increase memory limit for dashboard processing

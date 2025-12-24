@@ -386,175 +386,97 @@
                 <p class="text-lg text-gray-600 max-w-2xl mx-auto">Pilih paket yang sesuai dengan kebutuhan acara Anda. Hemat hingga 30% dengan paket lengkap!</p>
             </div>
 
-            {{-- Decoy Effect: 3-Tier Pricing (Basic, Standard/DECOY, Premium/POPULAR) --}}
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                @php
-                    // Sort packages by price untuk decoy effect
-                    $sortedPackages = $eventPackages->sortBy('final_price')->values();
-                    $basicPackage = $sortedPackages[0] ?? null;
-                    $standardPackage = $sortedPackages[1] ?? null; // DECOY
-                    $premiumPackage = $sortedPackages[2] ?? null; // TARGET (Most Popular)
-                @endphp
-
-                {{-- BASIC Package --}}
-                @if($basicPackage)
-                <div class="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group">
-                    <div class="p-8">
-                        {{-- Header --}}
-                        <div class="text-center mb-6">
-                            <h3 class="text-2xl font-bold text-gray-800 mb-2">{{ $basicPackage->name }}</h3>
-                            <p class="text-sm text-gray-500">Cocok untuk acara sederhana</p>
+            {{-- Adaptive Grid: Shows ALL active packages --}}
+            @php
+                $packageCount = $eventPackages->count();
+                // Determine grid columns based on package count
+                $gridCols = match(true) {
+                    $packageCount <= 2 => 'md:grid-cols-2',
+                    $packageCount == 3 => 'md:grid-cols-3',
+                    default => 'md:grid-cols-2 lg:grid-cols-4',
+                };
+            @endphp
+            
+            <div class="grid grid-cols-1 {{ $gridCols }} gap-6 max-w-7xl mx-auto">
+                @foreach($eventPackages->sortBy('final_price') as $package)
+                    @php
+                        $isFeatured = $package->is_featured ?? false;
+                    @endphp
+                    
+                    <div class="relative {{ $isFeatured ? 'md:scale-105 z-10' : '' }}">
+                        {{-- Featured Badge --}}
+                        @if($isFeatured)
+                        <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 z-20">
+                            <span class="relative inline-flex items-center gap-1.5 bg-gradient-to-r from-[#FF6B6B] via-[#F4A6A0] to-[#FF8E53] text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg">
+                                <span class="absolute inset-0 rounded-full bg-gradient-to-r from-[#FF6B6B] to-[#FF8E53] blur-sm opacity-60 animate-pulse"></span>
+                                <span class="relative flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                    PILIHAN TERFAVORIT
+                                </span>
+                            </span>
                         </div>
-
-                        {{-- Price --}}
-                        <div class="text-center mb-8">
-                            <div class="inline-block">
-                                @if($basicPackage->original_price > $basicPackage->final_price)
-                                    <span class="text-sm text-gray-400 line-through block">Rp {{ number_format($basicPackage->original_price, 0, ',', '.') }}</span>
-                                @endif
-                                <span class="text-4xl font-bold text-[#9CAF88]">Rp {{ number_format($basicPackage->final_price, 0, ',', '.') }}</span>
+                        @endif
+                        
+                        <div class="{{ $isFeatured ? 'bg-gradient-to-br from-[#9CAF88] to-[#8a9e7a] text-white shadow-2xl ring-4 ring-[#9CAF88]/30' : 'bg-white shadow-lg hover:shadow-xl' }} rounded-2xl overflow-hidden transition-all duration-300 h-full flex flex-col {{ $isFeatured ? 'pt-4' : '' }}">
+                            {{-- Package Image/Header --}}
+                            @if($package->thumbnail_path || $package->image_url)
+                            <div class="h-32 overflow-hidden">
+                                <img src="{{ $package->thumbnail_path ? asset('storage/' . $package->thumbnail_path) : $package->image_url }}" 
+                                     alt="{{ $package->name }}" class="w-full h-full object-cover">
                             </div>
-                        </div>
-
-                        {{-- Features --}}
-                        <ul class="space-y-3 mb-8">
-                            @if($basicPackage->items && $basicPackage->items->count() > 0)
-                                @foreach($basicPackage->items->take(5) as $item)
-                                <li class="flex items-start gap-2">
-                                    <svg class="w-5 h-5 text-[#9CAF88] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-600">{{ $item->item_name }}</span>
-                                </li>
-                                @endforeach
-                            @else
-                                <li class="flex items-start gap-2">
-                                    <svg class="w-5 h-5 text-[#9CAF88] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-600">Paket Basic</span>
-                                </li>
                             @endif
-                        </ul>
-
-                        {{-- CTA --}}
-                        <a href="{{ route('event-packages.show', $basicPackage->slug) }}" 
-                           class="block w-full text-center bg-gray-100 text-gray-800 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition">
-                            Lihat Detail
-                        </a>
-                    </div>
-                </div>
-                @endif
-
-                {{-- PREMIUM Package (MOST POPULAR - Center Position for Emphasis) --}}
-                @if($premiumPackage)
-                <div class="bg-gradient-to-br from-[#9CAF88] to-[#8a9e7a] rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-300 overflow-hidden transform md:scale-110 relative z-10">
-                    {{-- Popular Badge --}}
-                    <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
-                        <span class="bg-[#F4A6A0] text-w hite px-6 py-2 rounded-full text-sm font-bold shadow-xl animate-pulse">
-                            🔥 PALING POPULER
-                        </span>
-                    </div>
-
-                    <div class="p-8 text-white">
-                        {{-- Header --}}
-                        <div class="text-center mb-6 mt-4">
-                            <h3 class="text-3xl font-bold mb-2">{{ $premiumPackage->name }}</h3>
-                            <p class="text-white/90">Nilai terbaik untuk uang Anda</p>
-                        </div>
-
-                        {{-- Price --}}
-                        <div class="text-center mb-8">
-                            <div class="inline-block">
-                                @if($premiumPackage->original_price > $premiumPackage->final_price)
-                                    <span class="text-sm text-white/70 line-through block">Rp {{ number_format($premiumPackage->original_price, 0, ',', '.') }}</span>
-                                    <span class="inline-block bg-[#F4A6A0] text-white px-3 py-1 rounded-full text-xs font-bold mb-2">
-                                        Hemat {{ $premiumPackage->discount_percentage }}%
+                            
+                            <div class="p-6 flex-1 flex flex-col">
+                                {{-- Package Name --}}
+                                <h3 class="text-xl font-bold {{ $isFeatured ? 'text-white' : 'text-gray-800' }} mb-2">{{ $package->name }}</h3>
+                                
+                                {{-- Price --}}
+                                <div class="mb-4">
+                                    @if($package->discount_percentage > 0)
+                                        <span class="text-sm {{ $isFeatured ? 'text-white/70' : 'text-gray-400' }} line-through block">
+                                            Rp {{ number_format($package->base_price, 0, ',', '.') }}
+                                        </span>
+                                        <span class="inline-block {{ $isFeatured ? 'bg-white/20' : 'bg-red-100 text-red-600' }} px-2 py-0.5 rounded text-xs font-bold mb-1">
+                                            Hemat {{ $package->discount_percentage }}%
+                                        </span>
+                                    @endif
+                                    <span class="text-2xl font-bold {{ $isFeatured ? 'text-white' : 'text-[#9CAF88]' }} block">
+                                        Rp {{ number_format($package->final_price, 0, ',', '.') }}
                                     </span>
-                                @endif
-                                <span class="text-5xl font-bold block">Rp {{ number_format($premiumPackage->final_price, 0, ',', '.') }}</span>
+                                </div>
+                                
+                                {{-- Items List --}}
+                                <ul class="space-y-2 mb-6 flex-1">
+                                    @if($package->items && $package->items->count() > 0)
+                                        @foreach($package->items->take(5) as $item)
+                                        <li class="flex items-start gap-2 text-sm">
+                                            <svg class="w-4 h-4 {{ $isFeatured ? 'text-white' : 'text-[#9CAF88]' }} flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                            <span class="{{ $isFeatured ? 'text-white/90' : 'text-gray-600' }}">{{ $item->item_name ?? $item->vendorCatalogItem->name ?? $item->vendorPackage->name ?? 'Item' }}</span>
+                                        </li>
+                                        @endforeach
+                                        @if($package->items->count() > 5)
+                                        <li class="text-xs {{ $isFeatured ? 'text-white/70' : 'text-gray-400' }} italic">
+                                            + {{ $package->items->count() - 5 }} item lainnya
+                                        </li>
+                                        @endif
+                                    @else
+                                        <li class="text-sm {{ $isFeatured ? 'text-white/70' : 'text-gray-500' }} italic">Lihat detail untuk info lengkap</li>
+                                    @endif
+                                </ul>
+                                
+                                {{-- CTA Button --}}
+                                <button onclick="selectPackage({{ $package->id }}, '{{ addslashes($package->name) }}', {{ $package->final_price }}, '{{ $package->slug }}')"
+                                   class="block w-full text-center {{ $isFeatured ? 'bg-white text-[#9CAF88] hover:bg-gray-100' : 'bg-[#9CAF88] text-white hover:bg-[#8a9e7a]' }} px-4 py-3 rounded-xl font-semibold transition cursor-pointer">
+                                    Pilih Paket Ini →
+                                </button>
                             </div>
                         </div>
-
-                        {{-- Features --}}
-                        <ul class="space-y-3 mb-8">
-                            @if($premiumPackage->items && $premiumPackage->items->count() > 0)
-                                @foreach($premiumPackage->items->take(8) as $item)
-                                <li class="flex items-start gap-2">
-                                    <svg class="w-5 h-5 text-white flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                    <span class="text-white/90">{{ $item->item_name }}</span>
-                                </li>
-                                @endforeach
-                            @else
-                                <li class="flex items-start gap-2">
-                                    <svg class="w-5 h-5 text-white flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                    <span class="text-white/90">Paket Premium Lengkap</span>
-                                </li>
-                            @endif
-                        </ul>
-
-                        {{-- CTA --}}
-                        <button onclick="selectPackage({{ $premiumPackage->id }}, '{{ addslashes($premiumPackage->name) }}', {{ $premiumPackage->final_price }}, '{{ $premiumPackage->slug }}')" 
-                           class="block w-full text-center bg-white text-[#9CAF88] px-6 py-4 rounded-xl font-bold hover:bg-gray-50 transition shadow-xl text-lg cursor-pointer">
-                            Pilih Paket Ini →
-                        </button>
                     </div>
-                </div>
-                @endif
-
-                {{-- STANDARD Package (DECOY - positioned last to make Premium look better) --}}
-                @if($standardPackage)
-                <div class="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group">
-                    <div class="p-8">
-                        {{-- Header --}}
-                        <div class="text-center mb-6">
-                            <h3 class="text-2xl font-bold text-gray-800 mb-2">{{ $standardPackage->name }}</h3>
-                            <p class="text-sm text-gray-500">Paket standar</p>
-                        </div>
-
-                        {{-- Price --}}
-                        <div class="text-center mb-8">
-                            <div class="inline-block">
-                                @if($standardPackage->original_price > $standardPackage->final_price)
-                                    <span class="text-sm text-gray-400 line-through block">Rp {{ number_format($standardPackage->original_price, 0, ',', '.') }}</span>
-                                @endif
-                                <span class="text-4xl font-bold text-gray-700">Rp {{ number_format($standardPackage->final_price, 0, ',', '.') }}</span>
-                            </div>
-                        </div>
-
-                        {{-- Features --}}
-                        <ul class="space-y-3 mb-8">
-                            @if($standardPackage->items && $standardPackage->items->count() > 0)
-                                @foreach($standardPackage->items->take(5) as $item)
-                                <li class="flex items-start gap-2">
-                                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-600">{{ $item->item_name }}</span>
-                                </li>
-                                @endforeach
-                            @else
-                                <li class="flex items-start gap-2">
-                                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-600">Paket Standard</span>
-                                </li>
-                            @endif
-                        </ul>
-
-                        {{-- CTA --}}
-                        <a href="{{ route('event-packages.show', $standardPackage->slug) }}" 
-                           class="block w-full text-center bg-gray-100 text-gray-800 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition">
-                            Lihat Detail
-                        </a>
-                    </div>
-                </div>
-                @endif
+                @endforeach
             </div>
 
             {{-- Trust Indicators --}}

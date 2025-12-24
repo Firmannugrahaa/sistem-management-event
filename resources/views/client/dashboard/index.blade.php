@@ -2,7 +2,107 @@
 
 @section('content')
 <div class="py-6">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        
+        {{-- SUCCESS / ERROR MESSAGES --}}
+        @if (session('success'))
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+                <span class="block sm:inline">{{ session('success') }}</span>
+            </div>
+        @endif
+        @if (session('error'))
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <span class="block sm:inline">{{ session('error') }}</span>
+            </div>
+        @endif
+
+        {{-- HERO SECTION: EVENT READY / COMPLETED --}}
+        @if($activeRequest && $activeRequest->detailed_status === 'completed')
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+             <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-2">
+                    <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold uppercase tracking-wider">Event Completed</span>
+                    <span class="text-indigo-200">|</span>
+                    <span class="text-sm font-medium">{{ optional($activeRequest->event->start_time)->format('d M Y') ?? '-' }}</span>
+                </div>
+                <h1 class="text-3xl md:text-4xl font-bold mb-4">Terima Kasih, {{ Auth::user()->name }}! 🎉</h1>
+                <p class="text-indigo-100 text-lg max-w-2xl">
+                    Acara <strong>{{ $activeRequest->event_type }}</strong> Anda telah terlaksana dengan sukses. 
+                    Kami sangat senang bisa menjadi bagian dari momen spesial Anda.
+                </p>
+                <div class="mt-6 flex gap-4">
+                    <a href="#rating-section" class="bg-white text-indigo-600 hover:bg-indigo-50 font-bold py-2 px-6 rounded-lg shadow-md transition">
+                        Beri Ulasan
+                    </a>
+                    <a href="{{ route('invoice.show', $activeRequest->event->invoice) }}" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-2 px-6 rounded-lg transition border border-indigo-500">
+                        Lihat Invoice
+                    </a>
+                </div>
+            </div>
+             {{-- Decorative bg elements --}}
+            <div class="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-purple-500/20 rounded-full blur-2xl"></div>
+        </div>
+
+        {{-- RATING SECTION --}}
+        @if(isset($vendorsToReview) && count($vendorsToReview) > 0)
+        <div id="rating-section" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
+            <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
+                <span class="mr-2">⭐</span> Berikan Ulasan Vendor
+            </h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-6 text-sm">
+                Bantu kami meningkatkan kualitas layanan dengan memberikan ulasan untuk vendor yang bertugas.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                @foreach($vendorsToReview as $vendor)
+                <div x-data="{ openRating: false, rating: 5 }" class="border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-gray-900 dark:text-white">{{ $vendor->brand_name ?? $vendor->name }}</h4>
+                            <p class="text-sm text-gray-500">{{ $vendor->serviceType->name ?? $vendor->category }}</p>
+                        </div>
+                        <button @click="openRating = !openRating" class="text-indigo-600 text-sm font-semibold hover:underline">
+                            Review
+                        </button>
+                    </div>
+
+                    <div x-show="openRating" x-collapse class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <form action="{{ route('client.reviews.store', $activeRequest->event) }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="vendor_id" value="{{ $vendor->id }}">
+                            
+                            {{-- Star Rating --}}
+                            <div class="flex flex-col gap-1 mb-3">
+                                <label class="text-xs font-semibold text-gray-600">Rating:</label>
+                                <div class="flex gap-1">
+                                    <template x-for="i in 5">
+                                        <button type="button" @click="rating = i" class="focus:outline-none transition transform hover:scale-110">
+                                            <svg :class="{'text-yellow-400 fill-current': rating >= i, 'text-gray-300': rating < i}" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                            </svg>
+                                        </button>
+                                    </template>
+                                </div>
+                                <input type="hidden" name="rating" x-model="rating">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="text-xs font-semibold text-gray-600">Komentar:</label>
+                                <textarea name="comment" rows="2" class="w-full text-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" placeholder="Tulis pengalaman Anda..."></textarea>
+                            </div>
+
+                            <button type="submit" class="w-full bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-black transition">
+                                Kirim Ulasan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+        @endif
         <!-- Header -->
         <div class="mb-6">
             <h1 class="text-2xl font-bold text-gray-900">My Dashboard</h1>
@@ -91,6 +191,90 @@
                         </div>
                     </div>
 
+                    <!-- Block: Ringkasan Pesanan (NEW) -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50">
+                            <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                </svg>
+                                Ringkasan Pesanan
+                            </h2>
+                        </div>
+                        <div class="p-6">
+                            @php
+                                // Try to load eventPackage if not loaded
+                                if ($activeRequest->event_package_id && !$activeRequest->relationLoaded('eventPackage')) {
+                                    $activeRequest->load('eventPackage', 'eventPackage.items');
+                                }
+                                
+                                $hasPackage = $activeRequest->event_package_id !== null && $activeRequest->eventPackage !== null;
+                                $hasVendor = $activeRequest->vendor_id !== null && !$hasPackage;
+                                $packagePrice = $hasPackage ? ($activeRequest->eventPackage->final_price ?? 0) : 0;
+                                $totalEstimasi = $activeRequest->total_price ?? $packagePrice;
+                            @endphp
+
+                            @if($hasPackage)
+                                {{-- Package Selected --}}
+                                <div class="flex items-start gap-4 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                                    <div class="flex-shrink-0 w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                        <span class="text-2xl">📦</span>
+                                    </div>
+                                    <div class="flex-1">
+                                        <span class="text-xs text-indigo-600 font-semibold uppercase">Paket Dipilih</span>
+                                        <h3 class="text-lg font-bold text-gray-900">{{ $activeRequest->eventPackage->name }}</h3>
+                                        <p class="text-xl font-bold text-indigo-600 mt-1">Rp {{ number_format($packagePrice, 0, ',', '.') }}</p>
+                                        @if($activeRequest->eventPackage->items && $activeRequest->eventPackage->items->count() > 0)
+                                            <p class="text-sm text-gray-500 mt-1">
+                                                {{ $activeRequest->eventPackage->items->count() }} layanan termasuk
+                                            </p>
+                                        @endif
+                                    </div>
+                                </div>
+                            @elseif($hasVendor)
+                                {{-- Custom/Susun Sendiri --}}
+                                <div class="flex items-start gap-4 p-4 bg-green-50 rounded-lg border border-green-100">
+                                    <div class="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <span class="text-2xl">🏢</span>
+                                    </div>
+                                    <div class="flex-1">
+                                        <span class="text-xs text-green-600 font-semibold uppercase">Vendor Pilihan</span>
+                                        <h3 class="text-lg font-bold text-gray-900">{{ $activeRequest->vendor->brand_name }}</h3>
+                                        @if($activeRequest->vendor->serviceType)
+                                            <p class="text-sm text-gray-500">{{ $activeRequest->vendor->serviceType->name }}</p>
+                                        @endif
+                                        @if($totalEstimasi > 0)
+                                            <p class="text-xl font-bold text-green-600 mt-1">Rp {{ number_format($totalEstimasi, 0, ',', '.') }}</p>
+                                        @else
+                                            <p class="text-sm text-gray-400 mt-1 italic">Harga akan dikonfirmasi admin</p>
+                                        @endif
+                                    </div>
+                                </div>
+                            @else
+                                {{-- No selection yet --}}
+                                <div class="text-center py-6">
+                                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <p class="text-gray-600 font-medium">Konsultasi Diperlukan</p>
+                                    <p class="text-sm text-gray-500 mt-1">Tim kami akan membantu menyusun paket terbaik</p>
+                                </div>
+                            @endif
+
+                            {{-- Quick Link to Detail --}}
+                            <div class="mt-4 pt-4 border-t border-gray-100">
+                                <a href="{{ route('client.requests.show', $activeRequest) }}" 
+                                   class="flex items-center justify-between text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                                    <span>Lihat detail lengkap pesanan</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Wedding Planner Checklist Block -->
                     @if($activeRequest->event_type == 'Wedding')
                     <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl shadow-sm border border-green-200 p-6">
@@ -280,15 +464,29 @@
                         </div>
                         <div class="p-6">
                             @if($invoiceSummary)
-                                <div class="space-y-4">
-                                    <div>
-                                        <p class="text-sm text-gray-500">Total Tagihan</p>
-                                        <p class="text-2xl font-bold text-gray-900">Rp {{ number_format($invoiceSummary['total'], 0, ',', '.') }}</p>
-                                    </div>
-                                    <div class="flex justify-between text-sm">
-                                        <span class="text-gray-500">Sudah Dibayar</span>
-                                        <span class="font-medium text-green-600">Rp {{ number_format($invoiceSummary['paid'], 0, ',', '.') }}</span>
-                                    </div>
+                                    <div class="space-y-3">
+                                        <div class="mb-4">
+                                            <p class="text-sm text-gray-500 mb-1">Total Tagihan</p>
+                                            <p class="text-3xl font-bold text-gray-900">
+                                                <span class="text-lg align-top text-gray-500 font-normal">Rp</span> 
+                                                {{ number_format($invoiceSummary['total'], 0, ',', '.') }}
+                                            </p>
+                                        </div>
+                                        
+                                        @if(isset($invoiceSummary['discount']) && $invoiceSummary['discount'] > 0)
+                                        <div class="flex justify-between text-green-600">
+                                            <span class="flex items-center">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
+                                                Voucher / Diskon
+                                            </span>
+                                            <span class="font-bold">- Rp {{ number_format($invoiceSummary['discount'], 0, ',', '.') }}</span>
+                                        </div>
+                                        @endif
+                                        
+                                        <div class="flex justify-between text-sm">
+                                            <span class="text-gray-600">Sudah Dibayar</span>
+                                            <span class="font-medium text-green-600">Rp {{ number_format($invoiceSummary['paid'], 0, ',', '.') }}</span>
+                                        </div>
                                     <div class="flex justify-between text-sm">
                                         <span class="text-gray-500">Sisa Tagihan</span>
                                         <span class="font-medium text-red-600">Rp {{ number_format($invoiceSummary['remaining'], 0, ',', '.') }}</span>
@@ -299,7 +497,7 @@
                                             {{ $invoiceSummary['status'] }}
                                         </span>
                                     </div>
-                                    <a href="{{ route('invoices.show', $invoiceSummary['invoice_id']) }}" 
+                                    <a href="{{ route('invoice.show', $invoiceSummary['invoice_id']) }}" 
                                        class="block w-full text-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
                                         Lihat Invoice
                                     </a>

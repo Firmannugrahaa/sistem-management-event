@@ -87,6 +87,29 @@
                         </div>
                     </div>
 
+                    {{-- Status Toggles --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-xl">
+                        {{-- Is Active --}}
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" name="is_active" value="1" checked
+                                   class="w-5 h-5 rounded border-gray-300 text-[#27AE60] focus:ring-[#27AE60]">
+                            <div>
+                                <span class="font-medium text-gray-700">Paket Aktif</span>
+                                <p class="text-xs text-gray-500">Tampilkan di landing page dan booking</p>
+                            </div>
+                        </label>
+                        
+                        {{-- Is Featured (Terfavorit) --}}
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" name="is_featured" value="1" {{ old('is_featured') ? 'checked' : '' }}
+                                   class="w-5 h-5 rounded border-gray-300 text-[#D4AF37] focus:ring-[#D4AF37]">
+                            <div>
+                                <span class="font-medium text-gray-700">⭐ Paket Terfavorit</span>
+                                <p class="text-xs text-gray-500">Tampilkan badge "Pilihan Terfavorit" di landing page</p>
+                            </div>
+                        </label>
+                    </div>
+
                     {{-- Thumbnail --}}
                     <div>
                         <label for="thumbnail" class="block text-sm font-medium text-gray-700 mb-2">Thumbnail Package</label>

@@ -89,6 +89,14 @@ class ClientRequest extends Model
     }
 
     /**
+     * Get the event package selected for this request
+     */
+    public function eventPackage(): BelongsTo
+    {
+        return $this->belongsTo(EventPackage::class);
+    }
+
+    /**
      * Get the event created from this request
      */
     public function event()
@@ -358,8 +366,16 @@ class ClientRequest extends Model
      */
     public function isReadyToConvert(): bool
     {
-        return $this->hasCompleteData()
-            && in_array($this->detailed_status, ['ready_to_confirm', 'approved']);
+        $checklist = $this->getReadinessChecklist();
+        
+        // Check if ALL checklist items are completed
+        foreach ($checklist as $item) {
+            if (!$item['completed']) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 
     /**
@@ -434,9 +450,9 @@ class ClientRequest extends Model
                 'description' => 'Nama, email, telepon (dan nama pasangan untuk wedding)'
             ],
             'budget_set' => [
-                'label' => 'Budget Ditentukan',
-                'completed' => $this->budget > 0,
-                'description' => 'Budget minimal untuk event sudah ditentukan'
+                'label' => 'Budget / Harga Ditentukan',
+                'completed' => $this->budget > 0 || ($this->event_package_id !== null && $this->eventPackage && $this->eventPackage->final_price > 0),
+                'description' => 'Budget atau harga paket sudah ditentukan'
             ],
         ];
     }

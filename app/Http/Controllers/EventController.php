@@ -229,6 +229,21 @@ class EventController extends Controller
                 }
             }
 
+            // 6. Auto-copy assigned staff from Client Request to Event Crews
+            if ($clientRequestId) {
+                $clientRequest = ClientRequest::find($clientRequestId);
+                
+                // Check if client request has an assigned staff member
+                if ($clientRequest && $clientRequest->assigned_to) {
+                    // Create event crew entry for the assigned staff
+                    \App\Models\EventCrew::create([
+                        'event_id' => $event->id,
+                        'user_id' => $clientRequest->assigned_to,
+                        'role' => 'Staff', // Match system role
+                    ]);
+                }
+            }
+
             \Illuminate\Support\Facades\DB::commit();
 
             return redirect()->route('events.index')->with('success', 'Event created successfully (Linked to Client Request).');
@@ -252,6 +267,7 @@ class EventController extends Controller
             'vendors.serviceType', 
             'crews.user', 
             'vendorItems.itemable',
+            'clientRequest.eventPackage.items.vendorCatalogItem.vendor',
             'clientRequest.recommendations.items.vendor',
             'clientRequest.nonPartnerCharges'
         ]);
@@ -642,5 +658,59 @@ class EventController extends Controller
         }
         
         return null;
+    }
+
+    /**
+     * Update event status (manual override or revert to auto)
+     */
+    public function updateStatus(Request $request, Event $event)
+    {
+        $this->authorize('update', $event);
+
+        $validated = $request->validate([
+            'status' => 'nullable|in:Planning,Confirmed,Ongoing,Completed,Cancelled',
+        ]);
+
+        if (empty($validated['status'])) {
+            // Revert to auto-calculation
+            $event->update([
+                'status' => null,
+                'manual_status_override' => false,
+            ]);
+            return back()->with('success', 'Status reverted to smart auto-calculation.');
+        }
+
+        // Prevent setting 'Completed' if invoice is not paid
+        if ($validated['status'] === 'Completed') {
+            $invoice = $event->invoice;
+            
+            if (!$invoice) {
+                // Determine if we should allow completion without invoice?
+                // For now, allow it but maybe warn? Or blocking?
+                // Let's assume blocking for now as specified
+                return back()->with('error', 'Cannot complete event. No invoice generated yet.');
+            }
+
+            // Ensure dynamic balance is used
+            $balanceDue = $invoice->balance_due;
+            
+            if ($balanceDue > 0) {
+                 return back()->with('error', 'Cannot complete event. Outstanding invoice balance of Rp ' . number_format($balanceDue, 0, ',', '.') . ' exists. Please settle the payment first.');
+            }
+        }
+
+        $event->update([
+            'status' => $validated['status'],
+            'manual_status_override' => true,
+        ]);
+
+        // [SYNC] Update Client Request to 'Completed' if Event is 'Completed'
+        if ($validated['status'] === 'Completed' && $event->clientRequest) {
+            $event->clientRequest->update([
+                'detailed_status' => 'completed'
+            ]);
+        }
+
+        return back()->with('success', 'Event status updated to ' . $validated['status']);
     }
 }

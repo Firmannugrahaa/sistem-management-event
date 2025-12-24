@@ -24,9 +24,17 @@ class InvoiceController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $invoices = Invoice::whereHas('event', function ($query) use ($user) {
-            $query->where('user_id', $user->id);
-        })->with('event')->latest()->paginate(15);
+        
+        $query = Invoice::with('event');
+
+        // Jika user bukan Admin/Owner/SuperUser, batasi hanya invoice miliknya
+        if (!$user->hasRole(['Admin', 'Owner', 'SuperUser'])) {
+             $query->whereHas('event', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
+        
+        $invoices = $query->latest()->paginate(15);
 
         return view('invoices.index', compact('invoices'));
     }

@@ -81,6 +81,7 @@ class RegisteredUserController extends Controller
                 'event_type' => $pendingBooking['event_type'],
                 'message' => $pendingBooking['message'] ?? null,
                 'vendor_id' => $pendingBooking['vendor_id'] ?? null,
+                'event_package_id' => $pendingBooking['package_id'] ?? null,  // ✅ FIXED
                 'status' => 'pending',
                 'detailed_status' => 'new',
                 'request_source' => 'public_booking_form',

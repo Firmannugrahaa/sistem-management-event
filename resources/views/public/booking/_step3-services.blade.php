@@ -10,7 +10,7 @@
 
             {{-- Filter by Event Type --}}
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <template x-for="pkg in packages.filter(p => !eventType || p.event_type === eventType || p.event_type === 'All')" :key="pkg.id">
+                <template x-for="pkg in packages.filter(p => !eventType || !p.event_type || p.event_type === eventType || p.event_type === 'All')" :key="pkg.id">
                     <div @click="selectPackage(pkg)"
                          :class="selectedPackage?.id === pkg.id ? 'ring-2 ring-[#D4AF37] border-[#D4AF37]' : 'border-gray-200 hover:border-[#9CAF88]'"
                          class="package-card bg-white border-2 rounded-2xl overflow-hidden cursor-pointer">
@@ -40,27 +40,64 @@
 
                             <h3 class="font-bold text-lg text-[#1C2440] mb-1" x-text="pkg.name"></h3>
                             
-                            {{-- Venue Indicator --}}
-                            <div class="flex items-center gap-1 text-xs mb-3">
-                                <template x-if="pkg.items?.some(i => i.vendor_catalog_item?.vendor?.category === 'Venue')">
-                                    <span class="text-[#9CAF88]">✓ Include Venue</span>
+                            {{-- Package Description (short) --}}
+                            <p class="text-xs text-gray-500 mb-3 line-clamp-2" x-text="pkg.description"></p>
+
+                            {{-- Package Items/Contents --}}
+                            <div class="space-y-1 mb-3 max-h-32 overflow-y-auto">
+                                {{-- Show items from package --}}
+                                <template x-if="pkg.items && pkg.items.length > 0">
+                                    <div class="space-y-1">
+                                        <template x-for="(item, idx) in pkg.items.slice(0, 5)" :key="idx">
+                                            <div class="flex items-center gap-2 text-xs">
+                                                <span class="text-[#9CAF88]">✓</span>
+                                                <span class="text-gray-600" x-text="item.vendor_catalog_item?.name || item.vendor_package?.name || item.item_name || 'Item'"></span>
+                                                <template x-if="item.quantity > 1">
+                                                    <span class="text-gray-400" x-text="'(' + item.quantity + 'x)'"></span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <template x-if="pkg.items.length > 5">
+                                            <div class="text-xs text-gray-400 italic">
+                                                + <span x-text="pkg.items.length - 5"></span> item lainnya
+                                            </div>
+                                        </template>
+                                    </div>
                                 </template>
-                                <template x-if="!pkg.items?.some(i => i.vendor_catalog_item?.vendor?.category === 'Venue')">
-                                    <span class="text-gray-400">Venue tidak termasuk</span>
+                                
+                                {{-- Fallback to features if no items --}}
+                                <template x-if="(!pkg.items || pkg.items.length === 0) && pkg.features && pkg.features.length > 0">
+                                    <div class="space-y-1">
+                                        <template x-for="(feature, idx) in pkg.features.slice(0, 4)" :key="idx">
+                                            <div class="flex items-center gap-2 text-xs">
+                                                <span class="text-[#9CAF88]">✓</span>
+                                                <span class="text-gray-600" x-text="feature"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                
+                                {{-- Empty state --}}
+                                <template x-if="(!pkg.items || pkg.items.length === 0) && (!pkg.features || pkg.features.length === 0)">
+                                    <div class="text-xs text-gray-400 italic">Detail paket tersedia setelah dipilih</div>
                                 </template>
                             </div>
-
-                            {{-- Features --}}
-                            <ul class="text-sm text-gray-600 space-y-1 mb-4">
-                                <template x-for="(feature, idx) in (pkg.features || []).slice(0, 3)" :key="idx">
-                                    <li class="flex items-start gap-2">
-                                        <svg class="w-4 h-4 text-[#9CAF88] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                        </svg>
-                                        <span x-text="feature"></span>
-                                    </li>
+                            
+                            {{-- Venue Badge --}}
+                            <div class="flex flex-wrap gap-1 mb-3">
+                                <template x-if="pkg.items?.some(i => i.vendor_catalog_item?.vendor?.service_type?.name === 'Venue' || i.vendor_catalog_item?.vendor?.category === 'Venue')">
+                                    <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">✓ Venue</span>
                                 </template>
-                            </ul>
+                                <template x-if="pkg.items?.some(i => i.vendor_catalog_item?.vendor?.service_type?.name === 'Catering' || i.vendor_catalog_item?.vendor?.category === 'Catering')">
+                                    <span class="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">✓ Catering</span>
+                                </template>
+                                <template x-if="pkg.items?.some(i => i.vendor_catalog_item?.vendor?.service_type?.name === 'Dekorasi' || i.vendor_catalog_item?.vendor?.category === 'Dekorasi')">
+                                    <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">✓ Dekorasi</span>
+                                </template>
+                                <template x-if="pkg.items?.some(i => i.vendor_catalog_item?.vendor?.service_type?.name === 'Dokumentasi' || i.vendor_catalog_item?.vendor?.category === 'Dokumentasi')">
+                                    <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">✓ Foto/Video</span>
+                                </template>
+                            </div>
 
                             {{-- Price --}}
                             <div class="pt-3 border-t border-gray-100">
@@ -79,7 +116,7 @@
             </div>
 
             {{-- Empty State --}}
-            <div x-show="packages.filter(p => !eventType || p.event_type === eventType || p.event_type === 'All').length === 0" 
+            <div x-show="packages.filter(p => !eventType || !p.event_type || p.event_type === eventType || p.event_type === 'All').length === 0" 
                  class="text-center py-12">
                 <div class="text-5xl mb-4">📭</div>
                 <p class="text-gray-500">Belum ada paket tersedia untuk jenis acara ini.</p>

@@ -274,12 +274,53 @@
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>Biaya Pendaftaran Event: {{ $invoice->event->event_name ?? 'Event' }}</td>
-                    <td style="text-align: right;">1</td>
-                    <td style="text-align: right;">Rp {{ number_format($invoice->total_amount ?? 0, 0, ',', '.') }}</td>
-                    <td style="text-align: right;">Rp {{ number_format($invoice->total_amount ?? 0, 0, ',', '.') }}</td>
-                </tr>
+                @php
+                    $event = $invoice->event;
+                    $isPackageBooking = $event->isPackageBooking();
+                @endphp
+                
+                @if($isPackageBooking)
+                    {{-- Package Booking: Show only package total --}}
+                    @php
+                        $package = $event->eventPackage;
+                    @endphp
+                    <tr>
+                        <td>
+                            <strong>{{ $package->name }}</strong>
+                            <br>
+                            <small style="color: #666;">Paket {{ ucfirst($package->event_type ?? 'Event') }}</small>
+                        </td>
+                        <td style="text-align: right;">1</td>
+                        <td style="text-align: right;">Rp {{ number_format($package->final_price, 0, ',', '.') }}</td>
+                        <td style="text-align: right;">Rp {{ number_format($package->final_price, 0, ',', '.') }}</td>
+                    </tr>
+                @else
+                    {{-- Custom Booking: Show detailed breakdown --}}
+                    @foreach($event->vendors as $vendor)
+                        <tr>
+                            <td>
+                                {{ $vendor->brand_name ?? $vendor->name }}
+                                <br>
+                                <small style="color: #666;">{{ $vendor->serviceType->name ?? 'Vendor Service' }}</small>
+                            </td>
+                            <td style="text-align: right;">1</td>
+                            <td style="text-align: right;">Rp {{ number_format($vendor->pivot->agreed_price ?? 0, 0, ',', '.') }}</td>
+                            <td style="text-align: right;">Rp {{ number_format($vendor->pivot->agreed_price ?? 0, 0, ',', '.') }}</td>
+                        </tr>
+                    @endforeach
+                    
+                    {{-- Non-partner charges --}}
+                    @if($event->clientRequest && $event->clientRequest->nonPartnerCharges)
+                        @foreach($event->clientRequest->nonPartnerCharges as $charge)
+                            <tr>
+                                <td>{{ $charge->description }}</td>
+                                <td style="text-align: right;">1</td>
+                                <td style="text-align: right;">Rp {{ number_format($charge->charge_amount, 0, ',', '.') }}</td>
+                                <td style="text-align: right;">Rp {{ number_format($charge->charge_amount, 0, ',', '.') }}</td>
+                            </tr>
+                        @endforeach
+                    @endif
+                @endif
             </tbody>
         </table>
 
@@ -290,14 +331,34 @@
                     <!-- Kolom kiri kosong untuk balance -->
                 </td>
                 <td style="width: 50%; vertical-align: top;">
+                    @php
+                        // Calculate correct total based on booking type
+                        $subTotal = 0;
+                        if($isPackageBooking) {
+                            $subTotal = $package->final_price ?? 0;
+                        } else {
+                            // Sum vendor costs
+                            $subTotal = $event->vendors->sum('pivot.agreed_price');
+                            // Add non-partner charges
+                            if($event->clientRequest && $event->clientRequest->nonPartnerCharges) {
+                                $subTotal += $event->clientRequest->nonPartnerCharges->sum('charge_amount');
+                            }
+                        }
+
+                        // Calculate finals
+                        $discount = $invoice->voucher_discount_amount ?? 0;
+                        $finalTotal = $subTotal - $discount;
+                        $paidAmount = $invoice->paid_amount;
+                        $balanceDue = $finalTotal - $paidAmount;
+                    @endphp
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr>
                             <td style="padding: 5px 0;">Sub Total</td>
-                            <td style="padding: 5px 0; text-align: right;">Rp {{ number_format($invoice->total_amount ?? 0, 0, ',', '.') }}</td>
+                            <td style="padding: 5px 0; text-align: right;">Rp {{ number_format($subTotal, 0, ',', '.') }}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 5px 0;">Diskon</td>
-                            <td style="padding: 5px 0; text-align: right;">Rp 0</td>
+                            <td style="padding: 5px 0;">Diskon (Voucher)</td>
+                            <td style="padding: 5px 0; text-align: right;">- Rp {{ number_format($discount, 0, ',', '.') }}</td>
                         </tr>
                         <tr>
                             <td style="padding: 5px 0;">PPn</td>
@@ -305,15 +366,15 @@
                         </tr>
                         <tr>
                             <td style="padding: 10px 0; border-top: 2px solid #333; border-bottom: 2px solid #333; font-weight: bold; font-size: 16px;">Total</td>
-                            <td style="padding: 10px 0; border-top: 2px solid #333; border-bottom: 2px solid #333; text-align: right; font-weight: bold; font-size: 16px;">Rp {{ number_format($invoice->total_amount ?? 0, 0, ',', '.') }}</td>
+                            <td style="padding: 10px 0; border-top: 2px solid #333; border-bottom: 2px solid #333; text-align: right; font-weight: bold; font-size: 16px;">Rp {{ number_format($finalTotal, 0, ',', '.') }}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 5px 0;">Uang Muka</td>
-                            <td style="padding: 5px 0; text-align: right;">Rp 0</td>
+                            <td style="padding: 5px 0;">Sudah Dibayar</td>
+                            <td style="padding: 5px 0; text-align: right;">Rp {{ number_format($paidAmount, 0, ',', '.') }}</td>
                         </tr>
                         <tr>
                             <td style="padding: 5px 0; font-weight: bold;">Sisa Pembayaran</td>
-                            <td style="padding: 5px 0; text-align: right; font-weight: bold;">Rp {{ number_format($invoice->total_amount ?? 0, 0, ',', '.') }}</td>
+                            <td style="padding: 5px 0; text-align: right; font-weight: bold;">Rp {{ number_format($balanceDue, 0, ',', '.') }}</td>
                         </tr>
                     </table>
                 </td>

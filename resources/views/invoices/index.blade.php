@@ -41,7 +41,13 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">Rp {{ number_format($invoice->balance_due, 2) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ $invoice->issue_date->format('M d, Y') }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <a href="{{ route('invoice.show', $invoice) }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200">View</a>
+                                            @if(auth()->user()->hasRole(['Admin', 'Owner', 'SuperUser']))
+                                                <a href="{{ route('invoice.show', $invoice) }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200">Manage</a>
+                                                <span class="text-gray-300 mx-1">|</span>
+                                                <a href="{{ route('invoices.preview', $invoice) }}" target="_blank" class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200">Preview</a>
+                                            @else
+                                                <a href="{{ route('invoices.preview', $invoice) }}" target="_blank" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200">View Invoice</a>
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty

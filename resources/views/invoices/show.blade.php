@@ -46,10 +46,28 @@
       <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
         <div class="p-6 text-gray-900 dark:text-gray-100">
           <h3 class="text-lg font-bold mb-4">Ringkasan Tagihan</h3>
+          @php
+              // Calculate correct total based on booking type
+              $event = $invoice->event;
+              $isPackageBooking = $event->isPackageBooking();
+              $calculatedTotal = 0;
+              
+              if($isPackageBooking) {
+                  $package = $event->eventPackage;
+                  $calculatedTotal = $package?->final_price ?? 0;
+              } else {
+                  // Sum vendor costs
+                  $calculatedTotal = $event->vendors->sum('pivot.agreed_price');
+                  // Add non-partner charges
+                  if($event->clientRequest && $event->clientRequest->nonPartnerCharges) {
+                      $calculatedTotal += $event->clientRequest->nonPartnerCharges->sum('charge_amount');
+                  }
+              }
+          @endphp
           <div class="grid grid-cols-4 gap-4">
             <div>
               <p class="text-sm text-gray-500">Total Tagihan Awal</p>
-              <p class="text-2xl font-bold">Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</p>
+              <p class="text-2xl font-bold">Rp {{ number_format($calculatedTotal, 0, ',', '.') }}</p>
             </div>
             <div>
               <p class="text-sm text-gray-500">Diskon (Voucher)</p>
@@ -61,7 +79,7 @@
             </div>
             <div>
               <p class="text-sm text-gray-500">Sisa Tagihan</p>
-              <p class="text-2xl font-bold text-red-600">Rp {{ number_format($invoice->balance_due, 0, ',', '.') }}</p>
+              <p class="text-2xl font-bold text-red-600">Rp {{ number_format(($calculatedTotal - ($invoice->voucher_discount_amount ?? 0) - $invoice->paid_amount), 0, ',', '.') }}</p>
             </div>
           </div>
           <hr class="my-4 dark:border-gray-700">
@@ -235,33 +253,34 @@
         <div class="p-6 text-gray-900 dark:text-gray-100">
           <h3 class="text-lg font-bold mb-4">Catat Pembayaran Baru</h3>
 
-          <form id="store-payment-form-{{ $invoice->id }}" action="{{ route('payments.store', $invoice) }}" method="POST" class="needs-confirmation" data-confirmation-title="Konfirmasi Pembayaran" data-confirmation-message="Apakah Anda yakin ingin menyimpan pembayaran ini?">
+          <form id="payment-form-{{ $invoice->id }}" action="{{ route('payments.store', $invoice) }}" method="POST">
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 ">
               <div>
                 <x-input-label for="amount" :value="__('Jumlah (Rp)')" />
-                <x-text-input id="amount" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="number" name="amount" :value="old('amount')" required />
+                <x-text-input id="amount" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="number" name="amount" value="{{ old('amount') }}" required />
               </div>
               <div>
                 <x-input-label for="payment_date" :value="__('Tanggal Bayar')" />
-                <x-text-input id="payment_date" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="date" name="payment_date" :value="today()->toDateString()" required />
+                <x-text-input id="payment_date" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="date" name="payment_date" value="{{ date('Y-m-d') }}" required />
               </div>
               <div>
                 <x-input-label for="payment_method" :value="__('Metode Bayar')" />
-                <select name="payment_method" id="payment_method" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
-                  <option>Bank Transfer</option>
-                  <option>Cash</option>
-                  <option>Lainnya</option>
+                <select name="payment_method" id="payment_method" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" required>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Lainnya">Lainnya</option>
                 </select>
               </div>
             </div>
             <div class="mt-4">
               <x-input-label for="notes" :value="__('Catatan (Cth: DP 30%)')" />
-              <x-text-input id="notes" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="notes" :value="old('notes')" />
+              <x-text-input id="notes" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" type="text" name="notes" value="{{ old('notes') }}" />
             </div>
-            <x-primary-button type="submit" class="mt-4">
+            <button type="submit" 
+                    class="mt-4 inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
               Simpan Pembayaran
-            </x-primary-button>
+            </button>
           </form>
         </div>
       </div>

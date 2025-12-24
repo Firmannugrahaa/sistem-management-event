@@ -7,8 +7,21 @@
 
   <div class="py-12">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-      <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-        <div class="p-6 text-gray-900 dark:text-gray-100">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            {{-- READ ONLY BANNER --}}
+            @if($event->is_locked)
+            <div class="bg-green-100 border-b border-green-200 text-green-800 px-6 py-3">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <div>
+                        <span class="font-bold">Event Completed (Read-Only)</span>
+                        <p class="text-xs">Event ini telah selesai. Data dikunci untuk tujuan arsip dan pelaporan.</p>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            <div class="p-6 text-gray-900 dark:text-gray-100">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-bold">Info Event</h3>
 
@@ -36,7 +49,44 @@
             </div>
           </div>
           <div class="p-6 text-gray-900 dark:text-gray-100">
-            <h3 class="text-lg font-bold">Info Event</h3>
+            {{-- EVENT STATUS SECTION --}}
+            <div class="mb-6 flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                <h3 class="text-lg font-bold">Info Event</h3>
+                {{-- Status Badge --}}
+                <span class="px-3 py-1 rounded-full text-sm font-medium {{ $event->status_badge_color }}">
+                  {{ $event->computed_status }}
+                  @if($event->manual_status_override)
+                    <span class="text-xs ml-1" title="Manual Override Active">⚙️</span>
+                  @else
+                    <span class="text-xs ml-1" title="Auto-Calculated">🤖</span>
+                  @endif
+                </span>
+              </div>
+
+              {{-- Manual Status Override (Admin/Owner only) --}}
+              @hasanyrole('SuperUser|Owner|Admin')
+              <div class="flex items-center gap-2">
+                <form action="{{ route('events.updateStatus', $event) }}" method="POST" class="flex items-center gap-2">
+                  @csrf
+                  @method('PATCH')
+                  <select name="status" 
+                          class="text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-900 rounded-lg">
+                    <option value="">Auto (Smart)</option>
+                    <option value="Planning" {{ $event->status == 'Planning' && $event->manual_status_override ? 'selected' : '' }}>Planning</option>
+                    <option value="Confirmed" {{ $event->status == 'Confirmed' && $event->manual_status_override ? 'selected' : '' }}>Confirmed</option>
+                    <option value="Ongoing" {{ $event->status == 'Ongoing' && $event->manual_status_override ? 'selected' : '' }}>Ongoing</option>
+                    <option value="Completed" {{ $event->status == 'Completed' && $event->manual_status_override ? 'selected' : '' }}>Completed</option>
+                    <option value="Cancelled" {{ $event->status == 'Cancelled' && $event->manual_status_override ? 'selected' : '' }}>Cancelled</option>
+                  </select>
+                  <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+                    Update Status
+                  </button>
+                </form>
+              </div>
+              @endhasanyrole
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <p><strong>Nama Event:</strong> {{ $event->event_name }}</p>
@@ -60,7 +110,7 @@
         </div>
 
         {{-- DAFTAR CREW / PANITIA --}}
-        <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        {{-- <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
           <div class="p-6 text-gray-900 dark:text-gray-100">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-bold">Tim / Crew Event</h3>
@@ -69,7 +119,7 @@
                 x-on:click.prevent="$dispatch('open-modal', 'add-crew-modal')"
               >
                 + Tambah Crew
-              </x-primary-button>
+              </x-primary-button> 
             </div>
 
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -105,7 +155,7 @@
               </tbody>
             </table>
           </div>
-        </div>
+        </div> --}}
 
         {{-- Modal Tambah Crew --}}
         <x-modal name="add-crew-modal" focusable>
@@ -240,6 +290,12 @@
           </div>
         </div>
 
+        {{-- PRICING SECTION - CONDITIONAL BASED ON BOOKING METHOD --}}
+        @if($event->isPackageBooking())
+            {{-- Package Booking: Show only package total and included items (no individual prices) --}}
+            <x-package-price-summary :event="$event" />
+        @else
+            {{-- Custom Booking: Show detailed vendor breakdown with all prices --}}
         {{-- DAFTAR VENDOR YANG DITUGASKAN - ENHANCED --}}
         <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
           <div class="p-6 text-gray-900 dark:text-gray-100">
@@ -274,7 +330,7 @@
                       </svg>
                     </button>
                     @endif
-                    <div>
+                            <div>
                       <h4 class="font-semibold text-gray-900 dark:text-white">{{ $vendor['name'] }}</h4>
                       <div class="flex items-center gap-2 mt-1">
                         <span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">{{ $vendor['category'] }}</span>
@@ -396,6 +452,51 @@
             </div>
           </div>
         </div>
+        @endif {{-- End conditional pricing display --}}
+
+        {{-- TIM / CREW EVENT SECTION --}}
+        <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+          <div class="p-6 text-gray-900 dark:text-gray-100">
+            <h3 class="text-lg font-bold mb-4 flex items-center">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+              Tim / Crew Event
+            </h3>
+
+            @if($event->crews->count() > 0)
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                @foreach($event->crews as $crew)
+                  <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+                    <div class="flex items-start gap-3">
+                      <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                        </svg>
+                      </div>
+                      <div class="flex-1">
+                        <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $crew->user->name }}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ $crew->role }}</p>
+                        @if($crew->user->email)
+                          <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">{{ $crew->user->email }}</p>
+                        @endif
+                      </div>
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            @else
+              <div class="text-center py-8 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                <svg class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+                <p class="text-gray-500 dark:text-gray-400">Belum ada crew ditugaskan.</p>
+                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Staff akan otomatis ditambahkan saat event dibuat dari Client Request yang sudah di-assign.</p>
+              </div>
+            @endif
+          </div>
+        </div>
+
 
         {{-- FORM TAMBAH VENDOR --}}
         <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
